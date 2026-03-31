@@ -33,7 +33,7 @@ services:
         sync: false          # https://<your-backend>.onrender.com/auth/callback
 
   # ── Discord Bot (continuous background process) ────────────────────────────────
-  - type: worker
+  - type: web
     name: studyforge-bot
     runtime: python
     rootDir: bot
@@ -41,6 +41,8 @@ services:
     startCommand: python bot.py
     plan: free
     envVars:
+      - key: PORT
+        value: 10000
       - key: DISCORD_TOKEN
         sync: false          # your bot token from Discord Developer Portal
       - key: DATABASE_URL

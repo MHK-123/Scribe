@@ -9,6 +9,8 @@ import asyncpg
 import socketio
 from dotenv import load_dotenv
 
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from pomodoro import PomodoroManager
 
 # ─── Config ────────────────────────────────────────────────────────────────────
@@ -316,6 +318,23 @@ async def _process_xp(conn, member: discord.Member, guild_id: str, xp_gained: in
             except discord.HTTPException as e:
                 print(f'Failed to assign role reward {role.name}: {e}')
 
+# ─── Render Health Check Server ────────────────────────────────────────────────
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive")
+    def log_message(self, format, *args):
+        return # Silence logs
+
+def run_health_check():
+    port = int(os.getenv("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    print(f"Health check server running on port {port}")
+    server.serve_forever()
+
 # ─── Entry Point ───────────────────────────────────────────────────────────────
 if __name__ == '__main__':
+    # Start health check server in a background thread for Render Free Tier
+    threading.Thread(target=run_health_check, daemon=True).start()
     bot.run(TOKEN)
