@@ -1,0 +1,49 @@
+## Render Blueprint — StudyForge
+## Deploys two services from one repo:
+##   1. studyforge-backend  (Node.js Web Service)
+##   2. studyforge-bot      (Python Background Worker)
+##
+## Usage:
+##   Render Dashboard → New → Blueprint → connect repo → fill in env vars marked `sync: false`
+
+services:
+
+  # ── Backend API + Socket.IO ────────────────────────────────────────────────────
+  - type: web
+    name: studyforge-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false          # paste your Neon / Supabase connection string
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random value
+      - key: FRONTEND_URL
+        sync: false          # e.g. https://studyforge.vercel.app
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_OAUTH_REDIRECT_URI
+        sync: false          # https://<your-backend>.onrender.com/auth/callback
+
+  # ── Discord Bot (continuous background process) ────────────────────────────────
+  - type: worker
+    name: studyforge-bot
+    runtime: python
+    rootDir: bot
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    plan: free
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false          # your bot token from Discord Developer Portal
+      - key: DATABASE_URL
+        sync: false          # same connection string as backend
+      - key: VITE_API_URL
+        sync: false          # same as FRONTEND_URL backend URL — https://<your-backend>.onrender.com
