@@ -14,7 +14,12 @@ CREATE TABLE IF NOT EXISTS guild_configs (
     top2_role_id VARCHAR(255),
     top3_role_id VARCHAR(255),
     top10_role_id VARCHAR(255),
-    announcement_channel_id VARCHAR(255)
+    announcement_channel_id VARCHAR(255),
+
+    -- Feature Flags
+    is_vc_control_enabled BOOLEAN DEFAULT TRUE,
+    is_pomodoro_enabled BOOLEAN DEFAULT TRUE,
+    is_leveling_enabled BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS study_sessions (

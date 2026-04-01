@@ -17,17 +17,18 @@ def _fmt_time(seconds: int) -> str:
     m, s = divmod(seconds, 60)
     return f"{m:02d}:{s:02d}"
 
-def _progress_bar(elapsed: int, total: int, width: int = 20) -> str:
-    """Neon-style text-art progress bar."""
+def _system_bar(elapsed: int, total: int, width: int = 15) -> str:
+    """HUD-style thick progress bar using ANSI blocks."""
     ratio = min(elapsed / total, 1.0) if total > 0 else 0
     filled = int(ratio * width)
     empty  = width - filled
-    bar    = '█' * filled + '░' * empty
-    pct    = int(ratio * 100)
-    return f"`{bar}` {pct}%"
+    
+    # ANSI Cyan for filled, Dark Grey for empty
+    bar = f"\u001b[1;36m{'█' * filled}\u001b[0m\u001b[1;30m{'█' * empty}\u001b[0m"
+    return f" {bar} "
 
-def _build_embed(session: 'PomodoroSession', member_names: list[str]) -> discord.Embed:
-    """Build the Solo Leveling dungeon-themed embed."""
+def _build_embed(session: 'PomodoroSession', member_names: list[str], bot: discord.Client) -> discord.Embed:
+    """Build the premium 'SCRIBE SYSTEM' HUD embed."""
     now       = datetime.now(timezone.utc)
     is_focus  = session.phase == 'focus'
     is_paused = session.phase == 'paused'
@@ -40,51 +41,44 @@ def _build_embed(session: 'PomodoroSession', member_names: list[str]) -> discord
         remaining_sec = 0
 
     remaining_sec = max(0, remaining_sec)
-
+    total_sec     = (session.focus_min if is_focus or is_paused else session.break_min) * 60
+    elapsed_sec   = max(0, total_sec - remaining_sec)
+    
     # Phase config
     if is_focus:
-        phase_label  = '⚔️  FOCUS MODE'
-        phase_color  = 0x4b8bf5   # electric blue
-        total_sec    = session.focus_min * 60
-        next_phase   = '🌙 Break'
-        phase_icon   = '⚔️'
+        phase_label  = 'FOCUS MODE'
+        phase_color  = 0x4b8bf5   # electric blue (glowing)
+        next_phase   = f"🌙 Break in {remaining_sec // 60}m"
     elif session.phase == 'break':
-        phase_label  = '🌙  BREAK MODE'
-        phase_color  = 0x7b5cf0   # purple
-        total_sec    = session.break_min * 60
-        next_phase   = '⚔️ Focus'
-        phase_icon   = '🌙'
+        phase_label  = 'BREAK MODE'
+        phase_color  = 0x7b5cf0   # purple (glowing)
+        next_phase   = f"⚔️ Focus in {remaining_sec // 60}m"
     else:
-        phase_label  = '⏸  PAUSED'
+        phase_label  = 'SYSTEM PAUSED'
         phase_color  = 0x3a3a5c
-        total_sec    = session.focus_min * 60
-        next_phase   = '▶️ Resume'
-        phase_icon   = '⏸'
+        next_phase   = "▶️ Resume to continue"
 
-    elapsed_sec = max(0, total_sec - remaining_sec)
-    cycles_str  = f"{session.current_cycle} / {'∞' if session.total_cycles == 0 else session.total_cycles}"
+    cycles_str = f"{session.current_cycle} / {session.total_cycles or '∞'}"
+    time_str   = _fmt_time(remaining_sec)
+    sys_bar    = _system_bar(elapsed_sec, total_sec)
 
-    # Build description — dungeon system panel
-    time_display  = _fmt_time(remaining_sec)
-    progress      = _progress_bar(elapsed_sec, total_sec)
-    next_min      = remaining_sec // 60
+    # Build HUD Content
+    hunters_count = len(member_names)
+    hunters_list  = f"👥 **{hunters_count} Active Hunter{'s' if hunters_count != 1 else ''}**: {', '.join(member_names[:5])}" if member_names else "👥 **No Hunters Active**"
 
-    desc_lines = [
-        f"```ansi",
-        f"\u001b[1;36m╔══════════════════════════════════╗\u001b[0m",
-        f"\u001b[1;36m║    ⚔️  H U N T E R   S Y S T E M    ║\u001b[0m",
-        f"\u001b[1;36m╚══════════════════════════════════╝\u001b[0m",
-        f"```",
-        f"",
-        f"**{phase_label}** — Cycle `{cycles_str}`",
-        f"",
-        progress,
-        f"",
-        f"## ⏱  `{time_display}`",
-        f"",
-        f"> {next_phase} starts in **{next_min} min**" if not is_paused else "> Session is **paused** — click Resume to continue",
-    ]
-    description = '\n'.join(desc_lines)
+    description = (
+        f"```ansi\n"
+        f"\u001b[1;37m        SCRIBE SYSTEM\u001b[0m\n"
+        f"\u001b[1;30m    ⚔️  {phase_label} ACTIVE — CYCLE {cycles_str}\u001b[0m\n"
+        f"```\n"
+        f"# ⏱  `{time_str}`\n"
+        f"**{phase_label}**\n\n"
+        f"```ansi\n"
+        f"{sys_bar}\n"
+        f"```\n"
+        f"> {next_phase}\n"
+        f"{hunters_list}"
+    )
 
     embed = discord.Embed(
         description=description,
@@ -95,24 +89,13 @@ def _build_embed(session: 'PomodoroSession', member_names: list[str]) -> discord
         name="SCRIBE · FOCUS SYSTEM",
         icon_url="https://i.imgur.com/MFZnNba.png"
     )
+    # Background "Dungeon" aesthetics (Public URL provided by user)
+    try:
+        image_url = "https://image2url.com/r2/default/images/1775042958395-2815bf82-1b57-406a-87a6-ef0d0a2580c7.png"
+        embed.set_image(url=image_url) 
+    except Exception as e:
+        print(f"[Pomodoro] Image URL error: {e}")
 
-    # Participants
-    if member_names:
-        hunters = '\n'.join(f'`⚔` {name}' for name in member_names[:10])
-        embed.add_field(
-            name=f"👥 Active Hunters  [{len(member_names)}]",
-            value=hunters,
-            inline=False,
-        )
-    else:
-        embed.add_field(name="👥 Hunters", value="*Waiting for hunters to join...*", inline=False)
-
-    # Stats row
-    embed.add_field(name="🔁 Cycle",     value=f"`{cycles_str}`",      inline=True)
-    embed.add_field(name="⚔️ Phase",     value=f"`{phase_label}`",     inline=True)
-    embed.add_field(name="⏱ Remaining", value=f"`{time_display}`",    inline=True)
-
-    embed.set_footer(text="Scribe · Study System  •  Updates every 30s")
     return embed
 
 # ─── Session Data ──────────────────────────────────────────────────────────────
@@ -171,24 +154,18 @@ class PomodoroView(discord.ui.View):
             session.phase     = 'focus' if session.paused_remaining is not None else 'break'
             session.paused_remaining = None
             button.label = '⏸ Pause'
+            button.style = discord.ButtonStyle.secondary
             await interaction.response.send_message("▶️ Session resumed!", ephemeral=True)
         else:
             now = datetime.now(timezone.utc)
             session.paused_remaining = max(0, int((session.phase_end - now).total_seconds())) if session.phase_end else 0
             session.phase = 'paused'
             button.label  = '▶️ Resume'
+            button.style  = discord.ButtonStyle.success
             await interaction.response.send_message("⏸ Session paused.", ephemeral=True)
         await self.manager._refresh_message(session)
 
-    @discord.ui.button(label='⏭ Skip', style=discord.ButtonStyle.primary, custom_id='pomo_skip', row=0)
-    async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        session = self._get_session()
-        if not session:
-            return await interaction.response.send_message("No active session.", ephemeral=True)
-        await self.manager._advance_phase(session)
-        await interaction.response.send_message("⏭ Phase skipped!", ephemeral=True)
-
-    @discord.ui.button(label='➕ +5 min', style=discord.ButtonStyle.secondary, custom_id='pomo_extend', row=1)
+    @discord.ui.button(label='➕ +5 min', style=discord.ButtonStyle.secondary, custom_id='pomo_extend', row=0)
     async def extend_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         session = self._get_session()
         if not session:
@@ -198,7 +175,7 @@ class PomodoroView(discord.ui.View):
             await self.manager._refresh_message(session)
         await interaction.response.send_message("➕ Extended by 5 minutes!", ephemeral=True)
 
-    @discord.ui.button(label='⏹ Stop', style=discord.ButtonStyle.danger, custom_id='pomo_stop', row=1)
+    @discord.ui.button(label='⏹ Stop', style=discord.ButtonStyle.danger, custom_id='pomo_stop', row=0)
     async def stop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Only guild admins can stop
         if not interaction.user.guild_permissions.manage_channels:
@@ -219,6 +196,46 @@ class PomodoroManager:
         self.pool     = pool
         self.sessions: dict[tuple, PomodoroSession] = {}
 
+    async def load_active_sessions(self):
+        """Reload active sessions from DB on startup (e.g. after bot restart)."""
+        print('[Pomodoro] Reloading active sessions from archive...')
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch('SELECT * FROM pomodoro_sessions WHERE is_active = TRUE')
+            for row in rows:
+                guild = self.bot.get_guild(int(row['guild_id']))
+                if not guild: continue
+                vc    = guild.get_channel(int(row['voice_channel_id']))
+                if not vc: continue
+                
+                key = (int(row['guild_id']), int(row['voice_channel_id']))
+                participants = {m.id: datetime.now(timezone.utc) for m in vc.members if not m.bot}
+                
+                session = PomodoroSession(
+                    guild_id        = int(row['guild_id']),
+                    vc_id           = int(row['voice_channel_id']),
+                    text_channel_id = int(row['text_channel_id']),
+                    focus_min       = 25, # Default, or fetch from config
+                    break_min       = 5,  # Default
+                    total_cycles    = row['total_cycles'],
+                    auto_stop       = True,
+                    phase           = row['phase'],
+                    phase_end       = row['phase_end_time'],
+                    current_cycle   = row['current_cycle'],
+                    message_id      = int(row['message_id']) if row['message_id'] else None,
+                    participants    = participants,
+                )
+                
+                # Try to re-fetch more detailed config
+                cfg = await conn.fetchrow('SELECT * FROM pomodoro_configs WHERE guild_id = $1 AND voice_channel_id = $2', row['guild_id'], row['voice_channel_id'])
+                if cfg:
+                    session.focus_min = cfg['focus_duration']
+                    session.break_min = cfg['break_duration']
+                    session.auto_stop = cfg['auto_stop']
+
+                self.sessions[key] = session
+                session.task = asyncio.create_task(self._session_loop(session, key, guild))
+        print(f'[Pomodoro] Successfully restored {len(self.sessions)} sessions.')
+
     # ── Public API ────────────────────────────────────────────────────────────
 
     async def on_member_join_vc(self, member: discord.Member, channel: discord.VoiceChannel):
@@ -236,8 +253,11 @@ class PomodoroManager:
 
         if key in self.sessions:
             # Session exists — add participant
+            print(f"[Pomodoro] Member {member.name} joined existing session {key}")
             self.sessions[key].participants[member.id] = datetime.now(timezone.utc)
+            await self._refresh_message(self.sessions[key])
         else:
+            print(f"[Pomodoro] Triggering new session for {key}")
             await self.start_session(member.guild, channel, cfg)
 
     async def on_member_leave_vc(self, member: discord.Member, channel: discord.VoiceChannel):
@@ -262,7 +282,26 @@ class PomodoroManager:
 
         text_channel = guild.get_channel(int(cfg['text_channel_id']))
         if not text_channel:
+            print(f"[Pomodoro] CRITICAL: Text channel {cfg['text_channel_id']} not found for {guild.name}")
             return
+        
+        print(f"[Pomodoro] Starting new session in #{text_channel.name}")
+
+        # 1. Check for an existing session message ID for this VC in the DB
+        existing_msg_id = None
+        async with self.pool.acquire() as conn:
+            existing_msg_id = await conn.fetchval(
+                'SELECT message_id FROM pomodoro_sessions WHERE guild_id = $1 AND voice_channel_id = $2',
+                str(guild.id), str(vc.id)
+            )
+
+        # Try to cleanup the old message if it exists (Single message policy)
+        if existing_msg_id:
+            try:
+                old_msg = await text_channel.fetch_message(int(existing_msg_id))
+                await old_msg.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
         # Initial participants = current non-bot members
         participants = {
@@ -286,7 +325,7 @@ class PomodoroManager:
 
         # Build and send initial embed
         view  = PomodoroView(self, key)
-        embed = _build_embed(session, [guild.get_member(uid).display_name for uid in participants if guild.get_member(uid)])
+        embed = _build_embed(session, [guild.get_member(uid).display_name for uid in participants if guild.get_member(uid)], self.bot)
         try:
             msg = await text_channel.send(
                 content=self._phase_announcement(session, guild, participants),
@@ -346,9 +385,8 @@ class PomodoroManager:
                         timestamp=datetime.now(timezone.utc),
                     )
                     stopped_embed.set_author(name="SCRIBE · FOCUS SYSTEM")
-                    stopped_embed.set_footer(text="Session ended")
-                    await msg.edit(embed=stopped_embed, view=None)
-                    await text_ch.send(f"🏆 **Session complete!** Great work, Hunters. `{reason}`")
+                    # End session visualization
+                    await self._refresh_message(session, announcement=f"⏹ **{reason}**")
                 except (discord.HTTPException, discord.NotFound):
                     pass
 
@@ -411,26 +449,12 @@ class PomodoroManager:
                 return
             session.phase     = 'break'
             session.phase_end = now + timedelta(minutes=session.break_min)
-            if text_ch:
-                try:
-                    await text_ch.send(
-                        f"🌙 **Break time!** {vc_mentions}\n"
-                        f"> Rest for `{session.break_min} min`. Focus resumes after.",
-                    )
-                except discord.HTTPException:
-                    pass
+            announcement      = f"🌙 **Break time!** {vc_mentions}\n> Rest for `{session.break_min} min`."
         else:
             session.current_cycle += 1
             session.phase     = 'focus'
             session.phase_end = now + timedelta(minutes=session.focus_min)
-            if text_ch:
-                try:
-                    await text_ch.send(
-                        f"⚔️ **Focus Mode — Cycle {session.current_cycle}!** {vc_mentions}\n"
-                        f"> Break is over. Lock in for `{session.focus_min} min`.",
-                    )
-                except discord.HTTPException:
-                    pass
+            announcement      = f"⚔️ **Focus Mode — Cycle {session.current_cycle}!** {vc_mentions}\n> Lock in for `{session.focus_min} min`."
 
         # Update DB
         try:
@@ -443,11 +467,11 @@ class PomodoroManager:
         except Exception:
             pass
 
-        await self._refresh_message(session)
+        await self._refresh_message(session, announcement=announcement)
 
-    async def _refresh_message(self, session: PomodoroSession):
+    async def _refresh_message(self, session: PomodoroSession, announcement: str = None):
         """Edit the pinned embed message with updated timer."""
-        if not session.message_id:
+        if not session.message_id and session.phase != 'stopped':
             return
         guild   = self.bot.get_guild(session.guild_id)
         if not guild:
@@ -461,15 +485,43 @@ class PomodoroManager:
             for uid in session.participants
             if guild.get_member(uid)
         ]
-        embed = _build_embed(session, member_names)
+        embed = _build_embed(session, member_names, self.bot)
         key   = (session.guild_id, session.vc_id)
         view  = PomodoroView(self, key)
 
         try:
             msg = await text_ch.fetch_message(session.message_id)
-            await msg.edit(embed=embed, view=view)
+            if session.phase == 'stopped':
+                # Final edit state
+                stopped_embed = discord.Embed(
+                    description=(
+                        "```ansi\n"
+                        "\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n"
+                        "\u001b[1;31m║    ⚔️  SESSION COMPLETE           ║\u001b[0m\n"
+                        "\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n"
+                        "```\n"
+                        f"\n{announcement or '⚔️ **Session Complete**'}\n\n"
+                        f"Well done, Hunters. Rest and return stronger."
+                    ),
+                    color=0x2ecc71,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                stopped_embed.set_author(name="SCRIBE · FOCUS SYSTEM")
+                stopped_embed.set_footer(text="Session ended")
+                await msg.edit(content=None, embed=stopped_embed, view=None)
+            else:
+                await msg.edit(content=announcement or msg.content, embed=embed, view=view)
         except (discord.HTTPException, discord.NotFound) as e:
-            print(f'[Pomodoro] Failed to edit message: {e}')
+            # If message deleted, try to re-send unless stopped
+            if session.phase != 'stopped':
+                try:
+                    new_msg = await text_ch.send(content=announcement, embed=embed, view=view)
+                    session.message_id = new_msg.id
+                    # Update DB
+                    async with self.pool.acquire() as conn:
+                        await conn.execute('UPDATE pomodoro_sessions SET message_id=$1 WHERE guild_id=$2 AND voice_channel_id=$3', str(new_msg.id), str(session.guild_id), str(session.vc_id))
+                except Exception:
+                    pass
 
     def _phase_announcement(self, session: PomodoroSession, guild: discord.Guild, participants: dict) -> str:
         mentions = ' '.join(f'<@{uid}>' for uid in participants) if participants else '@everyone'

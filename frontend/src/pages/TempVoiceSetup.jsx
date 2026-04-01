@@ -2,34 +2,41 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { ServerCog, Save, Mic, Settings2, ShieldCheck, ChevronDown, FolderOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ServerCog, Save, Mic, Settings2, ShieldCheck, ChevronDown, FolderOpen, Sword, Skull } from 'lucide-react';
+
+import MagicPanel from '../components/MagicPanel.jsx';
+import DungeonButton from '../components/DungeonButton.jsx';
 
 // ─── Channel Dropdown ────────────────────────────────────────────────────────
 function ChannelSelect({ label, icon, value, onChange, options, placeholder, loading }) {
   return (
-    <div>
-      <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#8892b0', marginBottom:'0.5rem' }}>
+    <div className="space-y-2">
+      <label className="flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">
         {icon}{label}
       </label>
-      <div style={{ position:'relative' }}>
+      <div className="relative">
         {loading ? (
-          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.75rem 1rem', background:'rgba(6,6,18,0.9)', border:'1px solid rgba(75,139,245,0.18)', borderRadius:'0.625rem', color:'#8892b0', fontSize:'0.9rem' }}>
-            <div className="rune-loader" style={{ width:16, height:16 }}/>
-            Loading channels...
+          <div className="flex items-center gap-3 px-4 py-3 bg-black/40 border border-white/5 rounded-xl text-slate-500 text-sm italic">
+            <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+            Scrying channels...
           </div>
         ) : (
-          <>
-            <select value={value} onChange={e => onChange(e.target.value)} className="scribe-select">
-              <option value="">{placeholder}</option>
-              {options.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+          <div className="relative group">
+            <select 
+              value={value} 
+              onChange={e => onChange(e.target.value)} 
+              className="w-full appearance-none bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-slate-200 font-semibold focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 outline-none transition-all cursor-pointer group-hover:border-white/20"
+            >
+              <option value="" className="bg-[#0a0a0f]">{placeholder}</option>
+              {options.map(ch => <option key={ch.id} value={ch.id} className="bg-[#0a0a0f]">{ch.name}</option>)}
             </select>
-            <ChevronDown size={15} style={{ position:'absolute', right:'0.875rem', top:'50%', transform:'translateY(-50%)', color:'#8892b0', pointerEvents:'none' }}/>
-          </>
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-hover:text-slate-300 transition-colors" />
+          </div>
         )}
       </div>
       {value && !loading && (
-        <p style={{ marginTop:'0.35rem', fontSize:'0.72rem', color:'rgba(75,139,245,0.5)', fontFamily:'JetBrains Mono, monospace' }}>ID: {value}</p>
+        <p className="mt-1 text-[10px] text-blue-500/40 font-mono tracking-wider">SIGIL ID: {value}</p>
       )}
     </div>
   );
@@ -79,7 +86,7 @@ export default function TempVoiceSetup() {
   }, [id, apiUrl, token]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setSaving(true);
     try {
       await axios.post(`${apiUrl}/guilds/${id}/config`, config, {
@@ -95,127 +102,160 @@ export default function TempVoiceSetup() {
   };
 
   if (loading) return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'40vh', gap:'1rem' }}>
-      <div className="rune-loader"/>
-      <p style={{ color:'rgba(136,146,176,0.5)', fontSize:'0.8rem', letterSpacing:'0.1em', textTransform:'uppercase' }}>Loading configuration...</p>
+    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6">
+      <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin shadow-[0_0_15px_rgba(59,130,246,0.3)]" />
+      <p className="text-slate-500 text-[10px] font-bold tracking-[0.4em] uppercase animate-pulse">Reading Ancient Configs...</p>
     </div>
   );
 
   return (
-    <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.4 }} style={{ maxWidth:'720px' }}>
+    <div className="max-w-4xl space-y-8 p-4">
       {/* Header */}
-      <div style={{ marginBottom:'2rem' }}>
-        <div className="section-label" style={{ marginBottom:'0.4rem' }}>VC CONFIGURATION</div>
-        <h1 style={{ fontSize:'1.75rem', fontWeight:700, letterSpacing:'0.06em', display:'flex', alignItems:'center', gap:'0.75rem', margin:0 }}>
-          <ServerCog style={{ color:'#4b8bf5' }}/> Join-To-Create Setup
+      <header className="space-y-2">
+        <div className="text-[10px] font-bold tracking-[0.3em] text-blue-500/60 uppercase">Chamber Rituals</div>
+        <h1 className="text-4xl font-extrabold tracking-tighter text-white flex items-center gap-4 uppercase">
+          <ServerCog className="text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" size={32} />
+          Spawn Configuration
         </h1>
-        <p style={{ color:'#8892b0', marginTop:'0.4rem', fontSize:'0.9rem' }}>Configure how temporary voice channels are spawned.</p>
-      </div>
+        <p className="text-slate-400 font-medium max-w-xl">
+          Define the geometric parameters for temporary voice dungeons manifested within this realm.
+        </p>
+      </header>
 
-      <form onSubmit={handleSubmit} className="panel" style={{ padding:'2rem', borderRadius:'1rem' }}>
-        <div style={{ display:'flex', flexDirection:'column', gap:'2rem' }}>
-
+      <MagicPanel className="p-8 border-white/5 shadow-2xl" glowColor="rgba(59,130,246,0.05)">
+        <form onSubmit={handleSubmit} className="space-y-12">
+          
           {/* Channel Routing */}
-          <div>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.75rem' }}>
-              <Mic size={15} style={{ color:'#4b8bf5' }}/>
-              <span className="section-label">CHANNEL ROUTING</span>
+          <section className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Mic className="text-blue-500" size={20} />
+              <h3 className="text-sm font-bold tracking-[0.2em] text-slate-100 uppercase">Channel ley-lines</h3>
+              <div className="flex-1 h-px bg-gradient-to-r from-blue-500/30 to-transparent" />
             </div>
-            <p style={{ color:'rgba(136,146,176,0.5)', fontSize:'0.8rem', marginBottom:'1.25rem' }}>Select from your server — no IDs required.</p>
-            <hr className="neon-divider" style={{ marginBottom:'1.5rem' }}/>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem' }}>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <ChannelSelect
-                label="Join-To-Create Channel"
-                icon={<Mic size={12} style={{ color:'#4b8bf5' }}/>}
+                label="Primary Spawning Node"
+                icon={<Mic size={14} className="text-blue-400" />}
                 value={config.join_to_create_channel}
                 onChange={val => setConfig({ ...config, join_to_create_channel: val })}
                 options={channels.voiceChannels}
-                placeholder="— Select voice channel —"
+                placeholder="— Select anchor channel —"
                 loading={chLoading}
               />
               <ChannelSelect
-                label="Target Category"
-                icon={<FolderOpen size={12} style={{ color:'#7b5cf0' }}/>}
+                label="Target Void (Category)"
+                icon={<FolderOpen size={14} className="text-purple-400" />}
                 value={config.temp_vc_category}
                 onChange={val => setConfig({ ...config, temp_vc_category: val })}
                 options={channels.categories}
-                placeholder="— Select category —"
+                placeholder="— Select ritual space —"
                 loading={chLoading}
               />
             </div>
-          </div>
+          </section>
 
           {/* Room Preferences */}
-          <div>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.75rem' }}>
-              <Settings2 size={15} style={{ color:'#00d4ff' }}/>
-              <span className="section-label">ROOM PREFERENCES</span>
+          <section className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Settings2 className="text-orange-500" size={20} />
+              <h3 className="text-sm font-bold tracking-[0.2em] text-slate-100 uppercase">Manifestation Rules</h3>
+              <div className="flex-1 h-px bg-gradient-to-r from-orange-500/30 to-transparent" />
             </div>
-            <hr className="neon-divider" style={{ marginBottom:'1.5rem' }}/>
 
-            <div style={{ marginBottom:'1.25rem' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem' }}>
-                <label style={{ fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'#8892b0' }}>VC Name Template</label>
-                <span style={{ fontSize:'0.72rem', color:'rgba(0,212,255,0.7)', background:'rgba(0,212,255,0.07)', border:'1px solid rgba(0,212,255,0.15)', borderRadius:'0.375rem', padding:'0.15rem 0.5rem', fontFamily:'JetBrains Mono, monospace' }}>{'{username}'}</span>
+            <div className="space-y-8">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase italic">Naming Sigil Pattern</label>
+                  <span className="text-[10px] font-mono text-orange-400 bg-orange-400/5 border border-orange-400/20 rounded px-2 py-0.5">Variable: {'{username}'}</span>
+                </div>
+                <input
+                  type="text"
+                  value={config.vc_name_template}
+                  onChange={e => setConfig({ ...config, vc_name_template: e.target.value })}
+                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold placeholder:text-slate-700 focus:border-orange-500/40 focus:ring-4 focus:ring-orange-500/5 outline-none transition-all"
+                  placeholder="{username}'s Dungeon"
+                />
               </div>
-              <input
-                type="text"
-                value={config.vc_name_template}
-                onChange={e => setConfig({ ...config, vc_name_template: e.target.value })}
-                className="scribe-input"
-                placeholder="{username}'s Dungeon"
-              />
-            </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem', alignItems:'end' }}>
-              <div>
-                <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'#8892b0', marginBottom:'0.5rem' }}>Default User Limit</label>
-                <div style={{ position:'relative' }}>
-                  <input
-                    type="number"
-                    value={config.default_user_limit}
-                    onChange={e => setConfig({ ...config, default_user_limit: parseInt(e.target.value) || 0 })}
-                    className="scribe-input"
-                    min="0" max="99"
-                    style={{ paddingRight:'6rem' }}
-                  />
-                  <span style={{ position:'absolute', right:'1rem', top:'50%', transform:'translateY(-50%)', color:'rgba(136,146,176,0.5)', fontSize:'0.8rem', pointerEvents:'none' }}>
-                    {config.default_user_limit === 0 ? 'Unlimited' : 'Users'}
-                  </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase italic">Inhabitant Limit</label>
+                  <div className="relative group">
+                    <input
+                      type="number"
+                      value={config.default_user_limit}
+                      onChange={e => setConfig({ ...config, default_user_limit: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold focus:border-blue-500/40 outline-none transition-all pr-24"
+                      min="0" max="99"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500 uppercase tracking-widest pointer-events-none group-focus-within:text-blue-400 transition-colors">
+                      {config.default_user_limit === 0 ? 'Infinite' : 'Souls'}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setConfig({ ...config, auto_delete_empty: !config.auto_delete_empty })}
+                  className={`flex items-center justify-between p-4 bg-black/60 border rounded-xl cursor-pointer transition-all group ${config.auto_delete_empty ? 'border-blue-500/30 bg-blue-500/[0.02]' : 'border-white/5 hover:border-white/10'}`}
+                >
+                  <div className="space-y-0.5">
+                    <span className="block text-sm font-bold text-slate-200">Auto-Purge Empty Rooms</span>
+                    <span className="block text-[10px] text-slate-500 font-medium uppercase tracking-tight">Vanish when soul count reaches zero</span>
+                  </div>
+                  <div className="relative w-12 h-6 flex items-center">
+                    <div className={`w-full h-full rounded-full transition-colors ${config.auto_delete_empty ? 'bg-blue-600' : 'bg-slate-800'}`} />
+                    <motion.div
+                      animate={{ x: config.auto_delete_empty ? 24 : 4 }}
+                      className="absolute w-4 h-4 bg-white rounded-full shadow-lg"
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    />
+                  </div>
                 </div>
               </div>
-
-              <div
-                onClick={() => setConfig({ ...config, auto_delete_empty: !config.auto_delete_empty })}
-                style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.875rem 1rem', background:'rgba(6,6,18,0.9)', border:`1px solid ${config.auto_delete_empty ? 'rgba(75,139,245,0.3)' : 'rgba(75,139,245,0.1)'}`, borderRadius:'0.625rem', cursor:'pointer', userSelect:'none', transition:'all 0.2s ease' }}
-              >
-                <span style={{ fontSize:'0.85rem', fontWeight:600, color:'#c8d6f0' }}>Auto-delete empty rooms</span>
-                <div className={`toggle-track ${config.auto_delete_empty ? 'on' : 'off'}`}>
-                  <motion.div
-                    style={{ position:'absolute', top:'3px', width:'18px', height:'18px', background:'#fff', borderRadius:'50%', boxShadow:'0 2px 4px rgba(0,0,0,0.4)' }}
-                    animate={{ left: config.auto_delete_empty ? '26px' : '3px' }}
-                    transition={{ type:'spring', stiffness:500, damping:30 }}
-                  />
-                </div>
-              </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Footer */}
-        <hr className="neon-divider" style={{ margin:'2rem 0 1.5rem' }}/>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', color:'rgba(136,146,176,0.45)', fontSize:'0.8rem' }}>
-            <ShieldCheck size={14} style={{ color:'#4b8bf5' }}/>
-            Changes apply immediately to new rooms
+          {/* Footer Actions */}
+          <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3 text-slate-500 italic text-xs font-medium">
+               <ShieldCheck className="text-blue-500" size={16} />
+               Spells manifest immediately upon room generation.
+            </div>
+            
+            <DungeonButton 
+              variant="fire"
+              onClick={handleSubmit}
+              className="min-w-[12rem] h-14"
+              disabled={saving}
+            >
+              <AnimatePresence mode="wait">
+                {saving ? (
+                   <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Incanting...</span>
+                   </motion.div>
+                ) : saved ? (
+                   <motion.div key="saved" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex items-center gap-2 text-green-400">
+                      <Sword size={18} />
+                      <span>Sigil Recorded!</span>
+                   </motion.div>
+                ) : (
+                   <motion.div key="default" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+                      <Save size={18} />
+                      <span>Record Sigil</span>
+                   </motion.div>
+                )}
+              </AnimatePresence>
+            </DungeonButton>
           </div>
-          <button type="submit" disabled={saving} className="btn-primary" style={{ minWidth:'9.5rem', justifyContent:'center', opacity: saving ? 0.7 : 1 }}>
-            {saving ? <><div className="rune-loader" style={{ width:14, height:14 }}/>&nbsp;Saving...</>
-             : saved  ? <><ShieldCheck size={15}/>&nbsp;Saved!</>
-             : <><Save size={15}/>&nbsp;Save Config</>}
-          </button>
-        </div>
-      </form>
-    </motion.div>
+        </form>
+      </MagicPanel>
+
+      {/* Decorative Floor Detail */}
+      <div className="flex justify-center pt-12 opacity-10">
+         <Skull size={48} className="text-slate-500" />
+      </div>
+    </div>
   );
 }

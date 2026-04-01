@@ -8,7 +8,10 @@ import {
   ChevronDown, RotateCcw, Zap, Moon, Play, Pause, Circle
 } from 'lucide-react';
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+import MagicPanel from '../components/MagicPanel.jsx';
+import DungeonButton from '../components/DungeonButton.jsx';
+
+// ── Helpers ──
 const fmtTime = (sec) => {
   const s = Math.max(0, sec);
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -290,12 +293,14 @@ function ConfigCard({ config, channels, chLoading, onSave, onDelete, isNew = fal
             )}
           </div>
         </div>
-        <div style={{ display:'flex', gap:'0.5rem' }}>
+        <div className="flex items-center gap-3">
           {!isNew && (
-            <button onClick={e => { e.stopPropagation(); onDelete(config.id); }}
-              style={{ padding:'0.35rem', background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.15)', borderRadius:'0.4rem', color:'#f87171', cursor:'pointer', display:'flex' }}>
-              <Trash2 size={14}/>
-            </button>
+            <DungeonButton 
+              variant="danger"
+              onClick={e => { e.stopPropagation(); onDelete(config.id); }}
+              className="p-2 min-w-0"
+              icon={Trash2}
+            />
           )}
           {!isNew && <ChevronDown size={16} style={{ color:'#8892b0', transform: expanded ? 'rotate(180deg)' : 'none', transition:'transform 0.2s' }}/>}
         </div>
@@ -349,10 +354,29 @@ function ConfigCard({ config, channels, chLoading, onSave, onDelete, isNew = fal
 
             <hr className="neon-divider" style={{ margin:'1rem 0 1.25rem' }}/>
             <div style={{ display:'flex', justifyContent:'flex-end', gap:'0.75rem' }}>
-              {!isNew && <button onClick={() => setExpanded(false)} className="btn-ghost" style={{ fontSize:'0.85rem' }}>Cancel</button>}
-              <button onClick={handleSave} disabled={saving || !form.voice_channel_id || !form.text_channel_id} className="btn-primary" style={{ fontSize:'0.85rem', opacity: saving ? 0.7 : 1 }}>
-                {saving ? <><div className="rune-loader" style={{ width:14, height:14 }}/>&nbsp;Saving...</> : <><Save size={14}/>&nbsp;Save Config</>}
-              </button>
+              {!isNew && (
+                <DungeonButton variant="ghost" onClick={() => setExpanded(false)} className="text-sm">
+                  Cancel
+                </DungeonButton>
+              )}
+              <DungeonButton 
+                variant="fire"
+                onClick={handleSave} 
+                disabled={saving || !form.voice_channel_id || !form.text_channel_id} 
+                className="text-sm"
+              >
+                {saving ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Saving...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Save size={16}/>
+                    <span>Save Config</span>
+                  </div>
+                )}
+              </DungeonButton>
             </div>
           </motion.div>
         )}
@@ -456,9 +480,9 @@ export default function Pomodoro() {
             <Zap size={14} style={{ color:'#4b8bf5' }}/>
             <span className="section-label">CONFIGURED CHANNELS</span>
           </div>
-          <button onClick={() => setShowNew(true)} className="btn-ghost" style={{ fontSize:'0.8rem', padding:'0.45rem 0.875rem' }}>
-            <Plus size={14}/> Add Channel
-          </button>
+          <DungeonButton variant="mana" onClick={() => setShowNew(true)} className="px-4 py-2 text-xs" icon={Plus}>
+            Add Channel
+          </DungeonButton>
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:'0.875rem' }}>
@@ -474,10 +498,10 @@ export default function Pomodoro() {
           {configs.length === 0 && !showNew && (
             <div style={{ padding:'3rem', textAlign:'center', background:'rgba(6,6,18,0.5)', border:'1px dashed rgba(75,139,245,0.15)', borderRadius:'0.875rem' }}>
               <Timer size={32} style={{ color:'rgba(75,139,245,0.3)', marginBottom:'0.75rem' }}/>
-              <p style={{ color:'#8892b0', fontSize:'0.9rem' }}>No Pomodoro channels configured yet.</p>
-              <button onClick={() => setShowNew(true)} className="btn-primary" style={{ marginTop:'1rem', fontSize:'0.85rem' }}>
-                <Plus size={14}/> Configure First Channel
-              </button>
+              <p style={{ color:'#8892b0', fontSize:'0.9rem', marginBottom:'1.5rem' }}>No Pomodoro channels configured yet.</p>
+              <DungeonButton variant="fire" onClick={() => setShowNew(true)} icon={Plus}>
+                Configure First Channel
+              </DungeonButton>
             </div>
           )}
 

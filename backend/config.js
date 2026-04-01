@@ -14,4 +14,5 @@ export const config = {
   DISCORD_CLIENT_ID:       process.env.DISCORD_CLIENT_ID,
   DISCORD_CLIENT_SECRET:   process.env.DISCORD_CLIENT_SECRET,
   DISCORD_OAUTH_REDIRECT_URI: process.env.DISCORD_OAUTH_REDIRECT_URI,
+  ADMIN_IDS:               (process.env.ADMIN_IDS || '').split(',').map(id => id.trim()),
 };

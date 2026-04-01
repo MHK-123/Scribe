@@ -12,10 +12,7 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #020209;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(75,139,245,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(123,92,240,0.06) 0%, transparent 50%);
+  background-color: #020205;
   color: #e2e8f0;
   font-family: 'Rajdhani', sans-serif;
   font-size: 16px;
@@ -24,380 +21,189 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── Dungeon Cave Background ──────────────────────────────── */
+.dungeon-walls {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  background-color: #050508;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(10, 10, 15, 0) 0%, #020205 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-blend-mode: overlay;
+  opacity: 0.4;
+}
+
+.dungeon-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -9;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(75, 139, 245, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(123, 92, 240, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% -10%, rgba(255, 157, 28, 0.03) 0%, transparent 40%);
+  pointer-events: none;
+}
+
 /* ─── Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(75,139,245,0.2);
+  background: rgba(255, 157, 28, 0.1);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(75,139,245,0.4); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 157, 28, 0.3); }
 
 /* ─── Selection ───────────────────────────────────────────── */
-::selection { background: rgba(75,139,245,0.3); color: #e2e8f0; }
+::selection { background: rgba(255, 157, 28, 0.2); color: #fff; }
 
-/* ─── Design Tokens (CSS vars) ────────────────────────────── */
-:root {
-  --accent:         #4b8bf5;
-  --accent-purple:  #7b5cf0;
-  --accent-cyan:    #00d4ff;
-  --glow-blue:      rgba(75,139,245,0.4);
-  --glow-purple:    rgba(123,92,240,0.4);
-  --surface:        rgba(8,8,24,0.85);
-  --surface-solid:  #0d0d20;
-  --border:         rgba(75,139,245,0.12);
-  --border-bright:  rgba(75,139,245,0.35);
-}
-
-/* ─── Glassmorphism Panels ────────────────────────────────── */
-@layer components {
-  .glass {
-    background: rgba(8, 8, 28, 0.7);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid rgba(75,139,245,0.12);
-    border-radius: 1rem;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(75,139,245,0.06);
-  }
-
-  .glass-card {
-    @apply glass transition-all duration-300;
-    position: relative;
-    overflow: hidden;
-  }
-  .glass-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(75,139,245,0.03) 0%, transparent 60%);
-    pointer-events: none;
-  }
-  .glass-card:hover {
-    border-color: rgba(75,139,245,0.28);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.7), 0 0 20px rgba(75,139,245,0.08), inset 0 1px 0 rgba(75,139,245,0.1);
-    transform: translateY(-1px);
-  }
-
-  /* Ability Panel — card variant with top glow bar */
-  .panel {
-    @apply glass-card;
-  }
-  .panel::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 10%; right: 10%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(75,139,245,0.6), transparent);
-  }
-
-  /* Stat card — compact metric tile */
-  .stat-card {
-    @apply glass-card p-6;
-    transition: all 0.25s ease;
-  }
-  .stat-card:hover {
-    box-shadow: 0 0 30px rgba(75,139,245,0.12), 0 12px 40px rgba(0,0,0,0.7);
-  }
-
-  /* Neon Buttons */
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.75rem;
-    background: linear-gradient(135deg, #4b8bf5 0%, #7b5cf0 100%);
-    color: #fff;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    font-size: 0.95rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    border: none;
-    border-radius: 0.625rem;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.25s ease;
-    box-shadow: 0 0 20px rgba(75,139,245,0.25);
-  }
-  .btn-primary::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
-    opacity: 0;
-    transition: opacity 0.25s;
-  }
-  .btn-primary:hover::before { opacity: 1; }
-  .btn-primary:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 0 30px rgba(75,139,245,0.45), 0 8px 20px rgba(0,0,0,0.4);
-  }
-  .btn-primary:active { transform: translateY(0) scale(0.99); }
-
-  .btn-ghost {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: rgba(75,139,245,0.06);
-    color: rgba(226,232,240,0.85);
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border: 1px solid rgba(75,139,245,0.18);
-    border-radius: 0.625rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .btn-ghost:hover {
-    background: rgba(75,139,245,0.12);
-    border-color: rgba(75,139,245,0.4);
-    color: #e2e8f0;
-    box-shadow: 0 0 16px rgba(75,139,245,0.12);
-  }
-
-  /* Futuristic Select / Dropdown */
-  .scribe-select {
-    width: 100%;
-    appearance: none;
-    background: rgba(6,6,18,0.9);
-    border: 1px solid rgba(75,139,245,0.18);
-    border-radius: 0.625rem;
-    padding: 0.75rem 2.5rem 0.75rem 1rem;
-    color: #e2e8f0;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-  .scribe-select:focus {
-    border-color: rgba(75,139,245,0.5);
-    box-shadow: 0 0 0 3px rgba(75,139,245,0.1), 0 0 16px rgba(75,139,245,0.12);
-  }
-  .scribe-select option {
-    background: #0d0d20;
-    color: #e2e8f0;
-  }
-
-  /* Input field */
-  .scribe-input {
-    width: 100%;
-    background: rgba(6,6,18,0.9);
-    border: 1px solid rgba(75,139,245,0.18);
-    border-radius: 0.625rem;
-    padding: 0.75rem 1rem;
-    color: #e2e8f0;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.95rem;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-  .scribe-input::placeholder { color: rgba(136,146,176,0.5); }
-  .scribe-input:focus {
-    border-color: rgba(75,139,245,0.5);
-    box-shadow: 0 0 0 3px rgba(75,139,245,0.1), 0 0 16px rgba(75,139,245,0.08);
-  }
-
-  /* Badge */
-  .badge-active {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 99px;
-    background: rgba(0,212,255,0.08);
-    border: 1px solid rgba(0,212,255,0.2);
-    color: #00d4ff;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .badge-inactive {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 99px;
-    background: rgba(136,146,176,0.06);
-    border: 1px solid rgba(136,146,176,0.2);
-    color: #8892b0;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  /* Section label */
-  .section-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #8892b0;
-  }
-
-  /* Neon divider */
-  .neon-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(75,139,245,0.3), rgba(123,92,240,0.3), transparent);
-    border: none;
-  }
-
-  /* Sidebar nav link */
-  .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.65rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    font-size: 0.95rem;
-    letter-spacing: 0.02em;
-    color: #8892b0;
-    transition: all 0.2s ease;
-    position: relative;
-    cursor: pointer;
-  }
-  .nav-link:hover {
-    background: rgba(75,139,245,0.07);
-    color: #c8d6f0;
-  }
-  .nav-link.active {
-    background: rgba(75,139,245,0.12);
-    color: #4b8bf5;
-    border: 1px solid rgba(75,139,245,0.2);
-    box-shadow: 0 0 16px rgba(75,139,245,0.08), inset 0 1px 0 rgba(75,139,245,0.08);
-  }
-  .nav-link.active::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 20%; bottom: 20%;
-    width: 2px;
-    background: var(--accent);
-    border-radius: 0 2px 2px 0;
-    box-shadow: 0 0 8px var(--accent);
-  }
-
-  /* Loading rune / spinner */
-  .rune-loader {
-    width: 48px; height: 48px;
-    border: 2px solid rgba(75,139,245,0.15);
-    border-top-color: #4b8bf5;
-    border-right-color: #7b5cf0;
-    border-radius: 50%;
-    animation: rune-spin 1s linear infinite;
-    box-shadow: 0 0 16px rgba(75,139,245,0.3);
-  }
-
-  /* Toggle switch */
-  .toggle-track {
-    position: relative;
-    width: 3rem; height: 1.5rem;
-    border-radius: 99px;
-    transition: background 0.3s ease;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  .toggle-track.on  { background: linear-gradient(135deg, #4b8bf5, #7b5cf0); box-shadow: 0 0 12px rgba(75,139,245,0.4); }
-  .toggle-track.off { background: rgba(136,146,176,0.15); border: 1px solid rgba(136,146,176,0.2); }
-}
-
-/* ─── Keyframes ───────────────────────────────────────────── */
-@keyframes rune-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(75,139,245,0.2); }
-  50%       { box-shadow: 0 0 25px rgba(75,139,245,0.5), 0 0 50px rgba(75,139,245,0.2); }
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-10px); }
-}
-@keyframes scanline {
-  0%   { transform: translateY(-100%); opacity: 0; }
-  10%  { opacity: 0.05; }
-  90%  { opacity: 0.05; }
-  100% { transform: translateY(200vh); opacity: 0; }
-}
-@keyframes slide-down {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes bg-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50%       { background-position: 100% 50%; }
-}
-
-/* ─── Dungeon ambient bg particles ──────────────────────────── */
-.dungeon-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
+/* ─── Components ──────────────────────────────────────────── */
+.magic-panel {
+  background: rgba(10, 10, 18, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
   overflow: hidden;
 }
-.dungeon-bg::before {
+
+.magic-panel::before {
   content: '';
   position: absolute;
-  top: -30%; left: -20%;
-  width: 60%; height: 70%;
-  background: radial-gradient(ellipse, rgba(75,139,245,0.06) 0%, transparent 70%);
-  animation: float 12s ease-in-out infinite;
-}
-.dungeon-bg::after {
-  content: '';
-  position: absolute;
-  bottom: -20%; right: -10%;
-  width: 50%; height: 60%;
-  background: radial-gradient(ellipse, rgba(123,92,240,0.05) 0%, transparent 70%);
-  animation: float 15s ease-in-out infinite reverse;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 1rem;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent 40%, transparent 60%, rgba(255,255,255,0.05));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
 
-/* ─── Scanline overlay (optional retro feel) ─────────────────  */
+.rune-btn {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+  background: rgba(15, 15, 25, 0.8);
+  border: 1px solid rgba(75, 139, 245, 0.2);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.rune-btn:hover {
+  border-color: rgba(75, 139, 245, 0.5);
+  box-shadow: 0 0 20px rgba(75, 139, 245, 0.2);
+  transform: translateY(-1px);
+}
+
+.rune-btn:active {
+  transform: translateY(1px);
+}
+
+.nav-rune {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.nav-rune:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #e2e8f0;
+}
+
+.nav-rune.active {
+  color: #4b8bf5;
+  background: rgba(75, 139, 245, 0.05);
+}
+
+.nav-rune.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: #4b8bf5;
+  box-shadow: 0 0 15px #4b8bf5;
+  border-radius: 0 4px 4px 0;
+}
+
+.nav-rune .icon-glow {
+  transition: filter 0.3s ease;
+}
+
+.nav-rune:hover .icon-glow, .nav-rune.active .icon-glow {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* ─── Fog & Particles ─────────────────────────────────────── */
+.fog-layer {
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* ─── Fire Effect Container ───────────────────────────────── */
+.fire-container {
+  pointer-events: none;
+  position: absolute;
+  inset: -20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fire-spark {
+  position: absolute;
+  background: #ff9d1c;
+  border-radius: 50%;
+  filter: blur(2px);
+}
+
+/* ─── Utilities ───────────────────────────────────────────── */
 .scanlines {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 9999;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.015) 2px,
-    rgba(0,0,0,0.015) 4px
+  z-index: 50;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 0, 0, 0.05) 50%
   );
+  background-size: 100% 4px;
 }
 
-/* ─── Typography helpers ─────────────────────────────────────  */
-.text-glow-blue   { text-shadow: 0 0 12px rgba(75,139,245,0.7); }
-.text-glow-purple { text-shadow: 0 0 12px rgba(123,92,240,0.7); }
-.text-glow-cyan   { text-shadow: 0 0 12px rgba(0,212,255,0.7); }
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); opacity: 0.8; }
+  50% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); opacity: 1; }
+  100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); opacity: 0.8; }
+}
 
 .gradient-text {
-  background: linear-gradient(135deg, #4b8bf5 0%, #7b5cf0 50%, #00d4ff 100%);
+  background: linear-gradient(135deg, #e2e8f0 0%, #3b82f6 50%, #a855f7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
-/* ─── Recharts tooltip override ──────────────────────────────  */
-.recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: rgba(13,13,32,0.95) !important;
-  border: 1px solid rgba(75,139,245,0.25) !important;
-  border-radius: 0.5rem !important;
-  box-shadow: 0 0 20px rgba(75,139,245,0.15) !important;
-}
-
-/* ─── Hide number input spinners (used by NumericStepper) ─────  */
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; appearance: textfield; }
-
-

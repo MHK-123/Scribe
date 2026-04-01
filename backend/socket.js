@@ -19,6 +19,14 @@ export const initSocket = (server) => {
       console.log(`Socket ${socket.id} joined guild room: ${guildId}`);
     });
 
+    // Admin Sync
+    socket.on('guild_sync_response', (data) => {
+      console.log('Received guild sync from bot.');
+      // This will be used to enrich the globalGuildsCache in admin.js
+      // We can also emit this to any admin clients
+      io.emit('admin_guild_update', data.guilds);
+    });
+
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
     });

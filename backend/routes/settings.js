@@ -26,8 +26,8 @@ router.post('/import/:id', async (req, res) => {
     const result = await query(
       `INSERT INTO guild_configs
         (guild_id, join_to_create_channel, temp_vc_category, default_user_limit,
-         auto_delete_empty, vc_name_template, top1_role_id, top2_role_id, top3_role_id, top10_role_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         auto_delete_empty, vc_name_template, top1_role_id, top2_role_id, top3_role_id, top10_role_id, reset_timezone)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        ON CONFLICT (guild_id) DO UPDATE SET
          join_to_create_channel = EXCLUDED.join_to_create_channel,
          temp_vc_category       = EXCLUDED.temp_vc_category,
@@ -37,11 +37,12 @@ router.post('/import/:id', async (req, res) => {
          top1_role_id           = EXCLUDED.top1_role_id,
          top2_role_id           = EXCLUDED.top2_role_id,
          top3_role_id           = EXCLUDED.top3_role_id,
-         top10_role_id          = EXCLUDED.top10_role_id
+         top10_role_id          = EXCLUDED.top10_role_id,
+         reset_timezone         = EXCLUDED.reset_timezone
        RETURNING *`,
       [id, c.join_to_create_channel, c.temp_vc_category, c.default_user_limit ?? 0,
        c.auto_delete_empty !== false, c.vc_name_template || "{username}'s Dungeon",
-       c.top1_role_id, c.top2_role_id, c.top3_role_id, c.top10_role_id]
+       c.top1_role_id, c.top2_role_id, c.top3_role_id, c.top10_role_id, c.reset_timezone || 'Asia/Kolkata']
     );
     res.json({ success: true, config: result.rows[0] });
   } catch (err) {

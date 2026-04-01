@@ -2,8 +2,11 @@ import React, { useContext, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { Download, Upload, Server, Shield, DatabaseBackup } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Download, Upload, Shield, DatabaseBackup, Skull, Gem, ScrollText, AlertTriangle } from 'lucide-react';
+
+import MagicPanel from '../components/MagicPanel.jsx';
+import DungeonButton from '../components/DungeonButton.jsx';
 
 export default function SettingsBackup() {
   const { id } = useParams();
@@ -11,10 +14,19 @@ export default function SettingsBackup() {
   const fileInputRef = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [config, setConfig] = useState(null);
+  const [savingTz, setSavingTz] = useState(false);
+
+  React.useEffect(() => {
+    axios.get(`${apiUrl}/settings/export/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => setConfig(res.data))
+    .catch(console.error);
+  }, [id, apiUrl, token]);
 
   const handleExport = () => {
     setExporting(true);
-    // Using fetch to trigger download properly with Bearer token
     fetch(`${apiUrl}/settings/export/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -23,7 +35,7 @@ export default function SettingsBackup() {
        const url = window.URL.createObjectURL(blob);
        const a = document.createElement('a');
        a.href = url;
-       a.download = `StudyForge_${id}_Backup.json`;
+       a.download = `Dungeon_Backup_${id}.json`;
        document.body.appendChild(a);
        a.click();
        a.remove();
@@ -35,7 +47,6 @@ export default function SettingsBackup() {
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setImporting(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -44,9 +55,10 @@ export default function SettingsBackup() {
          await axios.post(`${apiUrl}/settings/import/${id}`, json, {
             headers: { Authorization: `Bearer ${token}` }
          });
-         alert('Backup imported successfully! Settings have been applied.');
+         setConfig(json);
+         alert('Ancient scrolls restored! Settings have been applied.');
        } catch (err) {
-         alert('Invalid backup file. Please ensure it is a valid StudyForge JSON export.');
+         alert('Invalid scroll file.');
        } finally {
          setImporting(false);
          if (fileInputRef.current) fileInputRef.current.value = '';
@@ -55,75 +67,130 @@ export default function SettingsBackup() {
     reader.readAsText(file);
   };
 
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      transition={{ duration: 0.4 }}
-      className="max-w-4xl space-y-8"
-    >
-      <div className="mb-10">
-         <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3">
-            <DatabaseBackup className="text-accent" />
-            Settings & Backup
-         </h1>
-         <p className="text-gray-400 text-lg">
-            Manage your server configuration data securely.
-         </p>
-      </div>
+  const handleTimezoneChange = async (newTz) => {
+    setSavingTz(true);
+    try {
+      const updatedConfig = { ...config, reset_timezone: newTz };
+      await axios.post(`${apiUrl}/settings/import/${id}`, updatedConfig, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setConfig(updatedConfig);
+    } catch (err) {
+      alert('Failed to recalibrate temporal nodes.');
+    } finally {
+      setSavingTz(false);
+    }
+  };
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  const timezones = [
+    { name: 'India (IST)', value: 'Asia/Kolkata' },
+    { name: 'Universal (UTC)', value: 'UTC' },
+    { name: 'Eastern (EST)', value: 'America/New_York' },
+    { name: 'Central (CST)', value: 'America/Chicago' },
+    { name: 'Pacific (PST)', value: 'America/Los_Angeles' },
+    { name: 'London (GMT)', value: 'Europe/London' },
+    { name: 'Tokyo (JST)', value: 'Asia/Tokyo' },
+    { name: 'Dubai (GST)', value: 'Asia/Dubai' },
+  ];
+
+  return (
+    <div className="max-w-4xl space-y-8 p-4">
+      {/* Header */}
+      <header className="space-y-2">
+        <div className="text-[10px] font-bold tracking-[0.3em] text-blue-500/60 uppercase">Sanctum Archive</div>
+        <h1 className="text-4xl font-extrabold tracking-tighter text-white flex items-center gap-4 uppercase">
+           <DatabaseBackup className="text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" size={32} />
+           Scroll Manifest
+        </h1>
+        <p className="text-slate-400 font-medium max-w-xl">
+           Preserve your dungeon configuration through ancient data scrolls or restore from previous manifestations.
+        </p>
+      </header>
+
+      {/* Timezone Calibration */}
+      <MagicPanel className="p-6 border-blue-500/10" glowColor="rgba(59,130,246,0.05)">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+              <Clock className="text-blue-400 w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white uppercase tracking-tight">Temporal Calibration</h3>
+              <p className="text-xs text-slate-400 font-medium">Synchronize the monthly reset ritual with your realm's local clock.</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <select 
+              value={config?.reset_timezone || 'Asia/Kolkata'}
+              onChange={(e) => handleTimezoneChange(e.target.value)}
+              disabled={savingTz}
+              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-blue-500/50 transition-all w-full md:w-64 appearance-none cursor-pointer"
+            >
+              {timezones.map(tz => (
+                <option key={tz.value} value={tz.value} className="bg-[#0a0a0f] text-white">{tz.name}</option>
+              ))}
+            </select>
+            {savingTz && <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />}
+          </div>
+        </div>
+      </MagicPanel>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
         {/* Export Card */}
-        <div className="glass-card p-8 rounded-2xl border border-border/80 flex flex-col relative overflow-hidden group">
-           {/* Decorative bg glow */}
-           <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[50px] rounded-full pointer-events-none group-hover:bg-emerald-500/20 transition-colors duration-700"></div>
-           
-           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 relative z-10">
-              <Download className="text-emerald-400 w-6 h-6" />
+        <MagicPanel className="p-8 border-white/5 flex flex-col group h-full" glowColor="rgba(59,130,246,0.03)">
+           <div className="w-16 h-16 rounded-2xl bg-blue-500/5 border border-blue-500/20 flex items-center justify-center mb-8 relative group-hover:border-blue-500/40 transition-colors">
+              <Download className="text-blue-400 w-8 h-8" />
+              <div className="absolute inset-0 bg-blue-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
            </div>
            
-           <div className="flex-1 relative z-10">
-              <h3 className="text-xl font-semibold mb-3 text-[#ededed]">Export Configuration</h3>
-              <p className="text-gray-400 text-sm leading-relaxed mb-8">
-                 Download a complete JSON snapshot of your current Join-To-Create setup, room preferences, and server limits. Keep this safe to restore your configuration later.
+           <div className="flex-1 space-y-4">
+              <h3 className="text-xl font-black text-white tracking-tight uppercase italic flex items-center gap-2">
+                 Manifest Scroll
+              </h3>
+              <p className="text-slate-400 text-sm leading-relaxed mb-8 font-medium">
+                 Create a permanent record of your Join-To-Create setup, room archetypes, and servant limits. This scroll is necessary to restore your sanctum in another realm.
               </p>
            </div>
            
-           <button 
-             onClick={handleExport}
-             disabled={exporting}
-             className="relative z-10 w-full flex justify-center items-center gap-2 bg-surface hover:bg-surface-hover border border-emerald-500/30 hover:border-emerald-500/50 transition-all px-6 py-3.5 rounded-xl font-semibold text-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.1)] hover:shadow-[0_0_20px_rgba(52,211,153,0.2)] disabled:opacity-50"
-           >
-              {exporting ? (
-                 <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Exporting...
-                 </span>
-              ) : (
-                 <>
-                    <Download size={18} /> Generate Backup File
-                 </>
-              )}
-           </button>
-        </div>
+           <div className="mt-8">
+              <DungeonButton 
+                variant="fire"
+                onClick={handleExport}
+                disabled={exporting}
+                className="w-full h-14"
+              >
+                 <AnimatePresence mode="wait">
+                    {exporting ? (
+                       <motion.div key="exporting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Inscribing...</span>
+                       </motion.div>
+                    ) : (
+                       <div key="default" className="flex items-center gap-3">
+                          <ScrollText size={20} />
+                          <span>Inscribe Data Scroll</span>
+                       </div>
+                    )}
+                 </AnimatePresence>
+              </DungeonButton>
+           </div>
+        </MagicPanel>
 
         {/* Import Card */}
-        <div className="glass-card p-8 rounded-2xl border border-border/80 flex flex-col relative overflow-hidden group">
-           {/* Decorative bg glow */}
-           <div className="absolute -top-24 -left-24 w-48 h-48 bg-accent/10 blur-[50px] rounded-full pointer-events-none group-hover:bg-accent/20 transition-colors duration-700"></div>
-
-           <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-6 relative z-10">
-              <Upload className="text-accent w-6 h-6" />
+        <MagicPanel className="p-8 border-white/5 flex flex-col group h-full" glowColor="rgba(168,85,247,0.03)">
+           <div className="w-16 h-16 rounded-2xl bg-purple-500/5 border border-purple-500/20 flex items-center justify-center mb-8 relative group-hover:border-purple-500/40 transition-colors">
+              <Upload className="text-purple-400 w-8 h-8" />
+              <div className="absolute inset-0 bg-purple-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
            </div>
 
-           <div className="flex-1 relative z-10">
-              <h3 className="text-xl font-semibold mb-3 text-[#ededed]">Import Configuration</h3>
-              <p className="text-gray-400 text-sm leading-relaxed mb-8">
-                 Restore your dashboard settings from a previously saved JSON backup. Proceed with caution, as this action will overwrite your current configuration instantly.
+           <div className="flex-1 space-y-4">
+              <h3 className="text-xl font-black text-white tracking-tight uppercase italic flex items-center gap-2">
+                 Absorb Scroll
+              </h3>
+              <p className="text-slate-400 text-sm leading-relaxed mb-8 font-medium">
+                 Heed the ancient data. Overwrite your current sanctuary configuration instantly from a previously inscribed JSON scroll. Proceed with caution.
               </p>
            </div>
            
@@ -135,38 +202,51 @@ export default function SettingsBackup() {
               onChange={handleImport} 
            />
            
-           <button 
-             onClick={() => !importing && fileInputRef.current?.click()}
-             disabled={importing}
-             className="relative z-10 w-full overflow-hidden group flex justify-center items-center gap-2 bg-accent hover:bg-[#6c78e6] transition-all px-6 py-3.5 rounded-xl font-semibold text-white shadow-[0_0_15px_rgba(94,106,210,0.2)] hover:shadow-[0_0_25px_rgba(94,106,210,0.4)] disabled:opacity-50"
-           >
-              {importing ? (
-                 <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Restoring...
-                 </span>
-              ) : (
-                 <>
-                    <Upload size={18} className="relative z-10" /> 
-                    <span className="relative z-10">Upload JSON Backup</span>
-                    <div className="absolute inset-0 bg-white/10 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"></div>
-                 </>
-              )}
-           </button>
-        </div>
+           <div className="mt-8">
+              <DungeonButton 
+                variant="mana"
+                onClick={() => !importing && fileInputRef.current?.click()}
+                disabled={importing}
+                className="w-full h-14"
+              >
+                 <AnimatePresence mode="wait">
+                    {importing ? (
+                       <motion.div key="importing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Absorbing...</span>
+                       </motion.div>
+                    ) : (
+                       <div key="default" className="flex items-center gap-3">
+                          <Gem size={20} />
+                          <span>Absorb Ancient Data</span>
+                       </div>
+                    )}
+                 </AnimatePresence>
+              </DungeonButton>
+           </div>
+        </MagicPanel>
         
       </div>
       
-      <div className="mt-8 p-4 bg-surface/50 border border-border rounded-xl flex items-start gap-4 text-sm text-gray-400">
-         <Shield className="w-5 h-5 text-accent mt-0.5" />
-         <p>
-            StudyForge securely manages configuration data. Backups do not contain private user logs or sensitive chat data. 
-            All modifications applied through import are immediately fully enforced to active rooms.
-         </p>
+      {/* Warning Panel */}
+      <MagicPanel className="p-5 border-orange-500/10 bg-orange-500/[0.02]" glowColor="rgba(249,115,22,0.05)">
+         <div className="flex items-start gap-4 text-xs font-medium text-slate-400">
+            <div className="p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
+               <AlertTriangle className="w-4 h-4 text-orange-500" />
+            </div>
+            <div className="space-y-1">
+               <p className="text-slate-200 font-bold uppercase tracking-widest text-[10px]">Guardian Warning:</p>
+               <p className="leading-relaxed">
+                  Sanctum manifests are secure and contain NO private soul shards or sensitive logs. 
+                  All scroll absorptions are finalized immediately across all active dungeon chambers.
+               </p>
+            </div>
+         </div>
+      </MagicPanel>
+
+      <div className="flex justify-center pt-12 opacity-5">
+         <Skull size={48} className="text-slate-500" />
       </div>
-    </motion.div>
+    </div>
   );
 }

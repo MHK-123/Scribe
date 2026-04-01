@@ -3,7 +3,10 @@ import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Award, Plus, Trash2, ShieldCheck, Clock } from 'lucide-react';
+import { Award, Plus, Trash2, ShieldCheck, Clock, Shield, Target, Sword, Sparkles } from 'lucide-react';
+
+import MagicPanel from '../components/MagicPanel.jsx';
+import DungeonButton from '../components/DungeonButton.jsx';
 
 export default function LevelRewards() {
   const { id } = useParams();
@@ -35,7 +38,7 @@ export default function LevelRewards() {
   }, [id, apiUrl, token]);
 
   const handleAddReward = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!newReward.required_hours || !newReward.role_id) return;
     setSaving(true);
     try {
@@ -63,147 +66,162 @@ export default function LevelRewards() {
   };
 
   const getRoleColor = (colorCode) => {
-    if (!colorCode || colorCode === 0) return '#ededed';
+    if (!colorCode || colorCode === 0) return '#64748b';
     return `#${colorCode.toString(16).padStart(6, '0')}`;
   };
 
   if (loading) {
     return (
-      <div className="max-w-4xl space-y-8 animate-pulse">
-        <div className="h-10 bg-surface rounded w-1/3 mb-10"></div>
-        <div className="glass-card p-8 h-32 rounded-2xl mb-6"></div>
-        <div className="glass-card p-8 h-64 rounded-2xl"></div>
+      <div className="max-w-4xl space-y-8 animate-pulse p-4">
+        <div className="h-10 bg-white/5 rounded w-1/3 mb-10"></div>
+        <div className="h-32 bg-white/5 rounded-2xl mb-6"></div>
+        <div className="h-64 bg-white/5 rounded-2xl"></div>
       </div>
     );
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      transition={{ duration: 0.4 }}
-      className="max-w-4xl space-y-8"
-    >
-      <div className="mb-10">
-         <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-3">
-            <Award className="text-accent" />
-            Level & Role Rewards
-         </h1>
-         <p className="text-gray-400 text-lg">
-            Automatically assign Discord roles when members hit study hour milestones.
-         </p>
-      </div>
+    <div className="max-w-4xl space-y-8 p-4">
+      {/* Header */}
+      <header className="space-y-2">
+        <div className="text-[10px] font-bold tracking-[0.3em] text-blue-500/60 uppercase">Sanctum Relics</div>
+        <h1 className="text-4xl font-extrabold tracking-tighter text-white flex items-center gap-4 uppercase">
+           <Award className="text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" size={32} />
+           Rank Requirements
+        </h1>
+        <p className="text-slate-400 font-medium max-w-xl">
+           Grant ancient roles to hunters who have harvested enough mana through study.
+        </p>
+      </header>
 
-      <div className="glass-card p-6 sm:p-8 rounded-2xl border border-border/80 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-purple-500 to-emerald-500"></div>
-        <h3 className="text-xl font-semibold mb-6 text-[#ededed]">Add New Milestone</h3>
+      {/* Add Reward Panel */}
+      <MagicPanel className="p-8 border-white/5" glowColor="rgba(59,130,246,0.05)">
+        <h3 className="text-sm font-bold tracking-[0.2em] text-slate-100 uppercase mb-8 flex items-center gap-2">
+           <Plus size={16} className="text-blue-400" /> Manifest New Milestone
+        </h3>
         
-        <form onSubmit={handleAddReward} className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1 w-full relative">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Required Study Hours</label>
-            <div className="relative">
-               <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+        <form onSubmit={handleAddReward} className="flex flex-col md:flex-row gap-8 items-end">
+          <div className="flex-1 w-full space-y-3">
+            <label className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase italic">Harvested Hours</label>
+            <div className="relative group">
+               <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
                <input 
                  type="number" 
                  min="1"
                  placeholder="e.g. 10"
                  value={newReward.required_hours}
                  onChange={e => setNewReward({...newReward, required_hours: e.target.value})}
-                 className="w-full bg-background border border-border rounded-xl pl-11 pr-4 py-3 text-[#ededed] focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none transition-all"
+                 className="w-full bg-black/60 border border-white/10 rounded-xl pl-12 pr-4 py-4 text-white font-bold outline-none focus:border-blue-500/40 transition-all"
                />
             </div>
           </div>
           
-          <div className="flex-1 w-full relative">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Reward Role</label>
-            <select 
-               value={newReward.role_id}
-               onChange={e => setNewReward({...newReward, role_id: e.target.value})}
-               className="w-full bg-background border border-border rounded-xl px-4 py-3 text-[#ededed] focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none transition-all appearance-none"
-            >
-               <option value="" disabled>Select a Discord server role...</option>
-               {roles.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-               ))}
-            </select>
-            <div className="absolute right-4 top-[2.4rem] pointer-events-none text-gray-400">▼</div>
+          <div className="flex-1 w-full space-y-3">
+            <label className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase italic">Awarded Role</label>
+            <div className="relative group">
+               <select 
+                  value={newReward.role_id}
+                  onChange={e => setNewReward({...newReward, role_id: e.target.value})}
+                  className="w-full appearance-none bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40 transition-all cursor-pointer"
+               >
+                  <option value="" disabled className="bg-[#0a0a0f]">Select a role...</option>
+                  {roles.map(r => (
+                     <option key={r.id} value={r.id} className="bg-[#0a0a0f]">
+                       {r.name}
+                     </option>
+                  ))}
+               </select>
+               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-slate-300 transition-colors">▼</div>
+            </div>
           </div>
 
-          <button 
-            type="submit" 
+          <DungeonButton 
+            variant="fire"
+            onClick={handleAddReward}
             disabled={saving || !newReward.required_hours || !newReward.role_id}
-            className="w-full md:w-auto h-[48px] px-8 bg-accent hover:bg-[#6c78e6] text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-accent/40 disabled:opacity-50 flex flex-shrink-0 items-center justify-center gap-2"
+            className="w-full md:w-auto h-14"
           >
-            {saving ? (
-               <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-               </svg>
-            ) : <><Plus size={18} /> Add Reward</>}
-          </button>
+            <AnimatePresence mode="wait">
+               {saving ? (
+                  <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                     <span>Forging...</span>
+                  </motion.div>
+               ) : (
+                  <div className="flex items-center gap-2">
+                    <Plus size={18} /> 
+                    <span>Manifest</span>
+                  </div>
+               )}
+            </AnimatePresence>
+          </DungeonButton>
         </form>
-      </div>
+      </MagicPanel>
 
-      <div className="glass-card rounded-2xl border border-border/80 overflow-hidden">
-        <div className="px-6 py-5 border-b border-white/5 bg-surface/30">
-           <h3 className="text-lg font-semibold text-[#ededed] flex items-center gap-2">
-             <ShieldCheck size={18} className="text-emerald-400" /> Active Milestones
+      {/* List Panel */}
+      <MagicPanel className="border-white/5 overflow-hidden" glowColor="rgba(59,130,246,0.02)">
+        <div className="px-8 py-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+           <h3 className="text-xs font-bold tracking-[0.2em] text-slate-100 uppercase flex items-center gap-3">
+             <ShieldCheck size={18} className="text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.3)]" /> Established Milestones
            </h3>
+           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{rewards.length} Recorded</span>
         </div>
         
         {rewards.length === 0 ? (
-           <div className="p-10 text-center text-gray-400">
-              <Award className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p>No role rewards configured yet.</p>
+           <div className="p-16 text-center">
+              <Sword className="w-12 h-12 mx-auto mb-4 text-slate-800 animate-pulse" />
+              <p className="text-slate-500 font-medium italic">No rank manifestations found in this realm.</p>
            </div>
         ) : (
            <div className="divide-y divide-white/5">
-              <AnimatePresence>
+              <AnimatePresence initial={false}>
                 {rewards.map(reward => {
                    const role = roles.find(r => r.id === reward.role_id);
-                   const roleName = role ? role.name : 'Unknown Role';
-                   const roleHex = role ? getRoleColor(role.color) : '#ededed';
+                   const roleName = role ? role.name : 'Unknown Sigil';
+                   const roleHex = role ? getRoleColor(role.color) : '#64748b';
 
                    return (
                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
                         key={reward.id} 
-                        className="flex items-center justify-between px-6 py-5 hover:bg-surface/30 transition-colors"
+                        className="flex items-center justify-between px-8 py-6 hover:bg-white/[0.01] transition-colors group"
                      >
-                       <div className="flex items-center gap-6">
-                          <div className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-surface border border-border">
-                             <span className="text-xl font-bold font-mono text-accent">{parseFloat(reward.required_hours)}</span>
-                             <span className="text-[10px] text-gray-500 uppercase tracking-wider">Hours</span>
+                       <div className="flex items-center gap-8">
+                          <div className="relative">
+                             <div className="flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-[#0a0a0f] border border-white/5 shadow-inner group-hover:border-blue-500/20 transition-colors">
+                                <span className="text-2xl font-black text-white">{parseFloat(reward.required_hours)}</span>
+                                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Mana Hours</span>
+                             </div>
+                             <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center justify-center">
+                                <Sparkles size={10} className="text-blue-400" />
+                             </div>
                           </div>
                           
-                          <div>
-                             <p className="text-sm text-gray-400 mb-1">Unlocks Role</p>
-                             <div className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-full border border-border w-max">
-                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: roleHex }}></span>
-                                <span className="font-medium text-sm text-[#ededed]">{roleName}</span>
+                          <div className="space-y-1">
+                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] italic">Granted Sigil</p>
+                             <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5 group-hover:border-white/10 transition-colors">
+                                <div className="w-3 h-3 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: roleHex, color: roleHex }}></div>
+                                <span className="font-bold text-sm text-white tracking-wide">{roleName}</span>
                              </div>
                           </div>
                        </div>
                        
-                       <button 
+                       <DungeonButton 
+                         variant="danger"
                          onClick={() => handleDelete(reward.id)} 
-                         className="p-3 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
-                         title="Remove Reward"
-                       >
-                         <Trash2 size={18} />
-                       </button>
+                         className="p-3 min-w-0"
+                         icon={Trash2}
+                         title="Purge Sigil"
+                       />
                      </motion.div>
                    )
                 })}
               </AnimatePresence>
            </div>
         )}
-      </div>
-
-    </motion.div>
+      </MagicPanel>
+    </div>
   );
 }

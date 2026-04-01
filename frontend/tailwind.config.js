@@ -7,17 +7,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        background:       '#020209',
-        surface:          'rgba(8, 8, 24, 0.85)',
-        'surface-hover':  'rgba(14, 14, 36, 0.95)',
-        'surface-solid':  '#0d0d20',
+        background:       '#020205',
+        surface:          'rgba(10, 10, 18, 0.75)',
+        'surface-hover':  'rgba(18, 18, 32, 0.85)',
+        'stone-base':     '#0a0a0f',
+        'stone-light':    '#1c1c28',
         border:           'rgba(75, 139, 245, 0.12)',
-        'border-bright':  'rgba(75, 139, 245, 0.35)',
-        accent:           '#4b8bf5',
-        'accent-purple':  '#7b5cf0',
-        'accent-cyan':    '#00d4ff',
+        'border-magic':   'rgba(75, 139, 245, 0.35)',
+        'torch-amber':    '#ff9d1c',
+        'magic-blue':     '#4b8bf5',
+        'magic-purple':   '#7b5cf0',
         'text-primary':   '#e2e8f0',
-        'text-muted':     '#8892b0',
+        'text-muted':     '#94a3b8',
       },
       fontFamily: {
         sans:    ['Rajdhani', 'sans-serif'],
@@ -25,48 +26,34 @@ export default {
         mono:    ['JetBrains Mono', 'monospace'],
       },
       boxShadow: {
-        'glow-blue':   '0 0 20px rgba(75,139,245,0.3), 0 0 40px rgba(75,139,245,0.1)',
-        'glow-purple': '0 0 20px rgba(123,92,240,0.3), 0 0 40px rgba(123,92,240,0.1)',
-        'glow-cyan':   '0 0 20px rgba(0,212,255,0.3)',
-        'panel':       '0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(75,139,245,0.06)',
+        'rune-blue':   '0 0 15px rgba(75,139,245,0.4), 0 0 30px rgba(75,139,245,0.15)',
+        'rune-purple': '0 0 15px rgba(123,92,240,0.4), 0 0 30px rgba(123,92,240,0.15)',
+        'torch':       '0 0 20px rgba(255,157,28,0.3)',
+        'panel-glow':  '0 8px 32px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05)',
       },
       animation: {
-        'glow-pulse':  'glow-pulse 3s ease-in-out infinite',
-        'rune-spin':   'rune-spin 8s linear infinite',
-        'float':       'float 6s ease-in-out infinite',
-        'scanline':    'scanline 4s linear infinite',
-        'flicker':     'flicker 0.15s infinite',
-        'gradient-x':  'gradient-x 15s ease infinite',
-        'slide-up':    'slide-up 0.4s ease-out',
+        'rune-pulse':  'rune-pulse 3s ease-in-out infinite',
+        'fire-burst':  'fire-burst 0.5s ease-out forwards',
+        'float-slow':   'float-slow 8s ease-in-out infinite',
+        'ember-rise':  'ember-rise 4s linear infinite',
       },
       keyframes: {
-        'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 10px rgba(75,139,245,0.2), 0 0 20px rgba(75,139,245,0.05)' },
-          '50%':      { boxShadow: '0 0 25px rgba(75,139,245,0.5), 0 0 50px rgba(75,139,245,0.15)' },
+        'rune-pulse': {
+          '0%, 100%': { opacity: 0.8, filter: 'drop-shadow(0 0 8px rgba(75,139,245,0.5))' },
+          '50%':      { opacity: 1,   filter: 'drop-shadow(0 0 20px rgba(75,139,245,0.8))' },
         },
-        'rune-spin': {
-          from: { transform: 'rotate(0deg)' },
-          to:   { transform: 'rotate(360deg)' },
+        'fire-burst': {
+          '0%':   { transform: 'scale(1)', opacity: 1 },
+          '100%': { transform: 'scale(2.5)', opacity: 0 },
         },
-        'float': {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%':      { transform: 'translateY(-12px)' },
+        'float-slow': {
+          '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+          '50%':      { transform: 'translateY(-20px) rotate(1deg)' },
         },
-        'scanline': {
-          '0%':   { transform: 'translateY(-100%)' },
-          '100%': { transform: 'translateY(200%)' },
-        },
-        'flicker': {
-          '0%, 100%': { opacity: 1 },
-          '50%':      { opacity: 0.85 },
-        },
-        'gradient-x': {
-          '0%, 100%': { backgroundPosition: 'left center' },
-          '50%':      { backgroundPosition: 'right center' },
-        },
-        'slide-up': {
-          from: { opacity: 0, transform: 'translateY(16px)' },
-          to:   { opacity: 1, transform: 'translateY(0)' },
+        'ember-rise': {
+          '0%':   { transform: 'translateY(0) translateX(0)', opacity: 0 },
+          '10%':  { opacity: 1 },
+          '100%': { transform: 'translateY(-100px) translateX(20px)', opacity: 0 },
         },
       }
     },

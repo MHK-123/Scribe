@@ -3,7 +3,10 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Settings, Plus, Server, LogOut } from 'lucide-react';
+import { Settings, Plus, Server, LogOut, Shield, Zap, Wand2, ArrowRight, ShieldAlert } from 'lucide-react';
+
+import MagicPanel from '../components/MagicPanel.jsx';
+import DungeonButton from '../components/DungeonButton.jsx';
 
 export default function ServerSelect() {
   const { token, apiUrl, user, logout } = useContext(AuthContext);
@@ -29,124 +32,147 @@ export default function ServerSelect() {
   }, [apiUrl, token, logout]);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#020209', color:'#e2e8f0', position:'relative' }}>
-       <div className="dungeon-bg" aria-hidden="true"/>
-       
-       {/* Navbar */}
-       <header style={{
-          position:'sticky', top:0, zIndex:50,
-          background:'rgba(2,2,9,0.88)', backdropFilter:'blur(20px)',
-          borderBottom:'1px solid rgba(75,139,245,0.12)',
-          padding:'0 1.5rem', height:'60px',
-          display:'flex', alignItems:'center', justifyContent:'space-between',
-          boxShadow:'0 1px 0 rgba(75,139,245,0.06)',
-       }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-             <div style={{ padding:'0.4rem', background:'rgba(75,139,245,0.1)', border:'1px solid rgba(75,139,245,0.2)', borderRadius:'0.5rem' }}>
-                <Server style={{ width:18, height:18, color:'#4b8bf5' }}/>
-             </div>
-             <span style={{ fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', fontSize:'1rem' }}>SCRIBE</span>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-             <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', background:'rgba(8,8,24,0.8)', border:'1px solid rgba(75,139,245,0.14)', padding:'0.3rem 0.75rem 0.3rem 0.4rem', borderRadius:'999px' }}>
-                <img src={user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : `https://ui-avatars.com/api/?name=${user.username}&background=4b8bf5&color=fff`} alt="Avatar" style={{ width:28, height:28, borderRadius:'50%', border:'1px solid rgba(75,139,245,0.3)' }}/>
-                <span style={{ fontSize:'0.875rem', fontWeight:600, color:'#c8d6f0' }}>{user.username}</span>
-             </div>
-             <button onClick={logout} style={{ padding:'0.4rem', background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.15)', borderRadius:'0.5rem', color:'#f87171', cursor:'pointer', display:'flex', alignItems:'center' }}>
-                <LogOut size={17}/>
-             </button>
-          </div>
-       </header>
+    <div className="min-h-screen w-full bg-[#020209] text-[#e2e8f0] relative overflow-x-hidden">
+      <div className="scanlines" aria-hidden="true"/>
+      
+      {/* Navbar Runes */}
+      <nav className="sticky top-0 z-50 px-6 h-16 flex items-center justify-between bg-[#020209]/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
+         <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+               <Server className="w-5 h-5 text-blue-500" />
+            </div>
+            <span className="font-black tracking-[0.2em] text-white uppercase italic">Scribe Archive</span>
+         </div>
+         
+         <div className="flex items-center gap-6">
+            {/* Admin Sanctum Link */}
+            {user?.id === '1407010812081475757' && (
+               <Link to="/admin" className="no-underline">
+                 <DungeonButton 
+                   variant="danger" 
+                   className="h-10 px-5 text-[10px] gap-2.5 group"
+                   icon={ShieldAlert}
+                 >
+                   Core Sanctum
+                 </DungeonButton>
+               </Link>
+            )}
 
-       <main style={{ maxWidth:'1280px', margin:'0 auto', padding:'3.5rem 1.5rem 5rem', position:'relative', zIndex:1 }}>
-          <div style={{ marginBottom:'3rem' }}>
-            <div className="section-label" style={{ marginBottom:'0.5rem' }}>SERVER SELECTION</div>
-            <motion.h1
-              initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
-              style={{ fontSize:'2rem', fontWeight:700, letterSpacing:'0.06em', marginBottom:'0.5rem' }}
+            <div className="flex items-center gap-3 bg-white/[0.02] border border-white/5 px-4 py-1.5 rounded-2xl">
+               <img 
+                 src={user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : `https://ui-avatars.com/api/?name=${user?.username}&background=3b82f6&color=fff`} 
+                 alt="Avatar" 
+                 className="w-7 h-7 rounded-full border border-white/10"
+               />
+               <span className="text-xs font-bold text-slate-300 tracking-wide">{user?.username}</span>
+            </div>
+            <button 
+              onClick={logout} 
+              className="p-2 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg text-slate-500 hover:text-red-400 transition-all"
+              title="Leave Realm"
             >
-              Choose Your <span className="gradient-text">Domain</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}
-              style={{ color:'#8892b0', fontSize:'0.95rem' }}
-            >
-              Select a server where you hold command permissions.
-            </motion.p>
-          </div>
-          
-          {loading ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1,2,3,4,5,6].map(i => (
-                  <div key={i} className="glass-card h-48 animate-pulse p-6 flex flex-col justify-between">
-                     <div className="flex gap-4 items-center">
-                        <div className="w-16 h-16 rounded-xl bg-white/5"></div>
-                        <div className="space-y-3 flex-1">
-                          <div className="h-4 bg-white/5 rounded w-3/4"></div>
-                          <div className="h-3 bg-white/5 rounded w-1/2"></div>
-                        </div>
-                     </div>
-                     <div className="h-10 bg-white/5 rounded-lg w-full mt-6"></div>
-                  </div>
-                ))}
-             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+               <LogOut size={20}/>
+            </button>
+         </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-6 py-16 relative z-10">
+         <header className="mb-16 space-y-4">
+            <div className="w-max px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em]">
+               Domain Selection
+            </div>
+            <h1 className="text-5xl font-black tracking-tighter text-white uppercase italic">
+               Choose Your <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]">Realm</span>
+            </h1>
+            <p className="text-slate-500 font-medium max-w-xl text-lg leading-relaxed">
+               Select a sanctuary where your spirit holds the authority to summon and command the Scribe.
+            </p>
+         </header>
+         
+         {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+               {[1,2,3,4,5,6].map(i => (
+                 <div key={i} className="h-64 bg-white/5 rounded-2xl animate-pulse border border-white/5" />
+               ))}
+            </div>
+         ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                <AnimatePresence>
                  {guilds.map((guild, index) => (
                     <motion.div 
                        key={guild.id}
-                       initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                       transition={{ delay: index * 0.05, duration: 0.4, type: "spring" }}
-                       className="h-full"
+                       initial={{ opacity: 0, y: 30 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       transition={{ delay: index * 0.05, duration: 0.5 }}
+                       className="group"
                     >
-                        <div className="glass-card" style={{ height:'100%', padding:'1.5rem', display:'flex', flexDirection:'column', position:'relative' }}>
-                           {/* Status badge */}
-                           <div style={{ position:'absolute', top:'1rem', right:'1rem' }}>
+                        <MagicPanel 
+                           className="h-full p-8 flex flex-col border-white/5 transition-transform duration-500 group-hover:-translate-y-2"
+                           glowColor={guild.is_installed ? "rgba(59,130,246,0.05)" : "rgba(100,116,139,0.02)"}
+                        >
+                           {/* Presence Stat */}
+                           <div className="absolute top-6 right-6">
                              {guild.is_installed
-                               ? <span className="badge-active"><span style={{ width:6, height:6, borderRadius:'50%', background:'#00d4ff', display:'inline-block', animation:'glow-pulse 2s infinite' }}/> Online</span>
-                               : <span className="badge-inactive"><span style={{ width:6, height:6, borderRadius:'50%', background:'#8892b0', display:'inline-block' }}/> Offline</span>
+                               ? <span className="flex items-center gap-2 text-[10px] font-black text-blue-500 tracking-widest uppercase italic">
+                                   <Zap size={10} className="animate-pulse" /> Manifested
+                                 </span>
+                               : <span className="text-[10px] font-black text-slate-700 tracking-widest uppercase italic">Untethered</span>
                              }
                            </div>
 
-                           <div style={{ display:'flex', alignItems:'center', gap:'1rem', marginBottom:'1.25rem' }}>
-                              {guild.icon_url
-                                ? <img src={guild.icon_url} alt={guild.name} style={{ width:52, height:52, borderRadius:'0.75rem', border:'1px solid rgba(75,139,245,0.2)' }}/>
-                                : <div style={{ width:52, height:52, borderRadius:'0.75rem', background:'linear-gradient(135deg, rgba(75,139,245,0.15), rgba(123,92,240,0.15))', border:'1px solid rgba(75,139,245,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.25rem', fontWeight:700, color:'#4b8bf5' }}>{guild.name.charAt(0)}</div>
-                              }
-                              <div style={{ flex:1, overflow:'hidden' }}>
-                                 <h2 style={{ fontWeight:700, fontSize:'1rem', letterSpacing:'0.03em', color:'#e2e8f0', marginBottom:'0.25rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{guild.name}</h2>
-                                 <p style={{ fontSize:'0.78rem', color:'#8892b0', letterSpacing:'0.04em', textTransform:'uppercase' }}>Management Access</p>
+                           <div className="flex items-center gap-6 mb-8">
+                              <div className="relative">
+                                 {guild.icon_url
+                                   ? <img src={guild.icon_url} alt={guild.name} className="w-16 h-16 rounded-2xl border border-white/10 shadow-2xl group-hover:border-blue-500/40 transition-colors" />
+                                   : <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/10 flex items-center justify-center text-2xl font-black text-blue-500 group-hover:border-blue-500/40 transition-colors uppercase italic shadow-inner">{guild.name.charAt(0)}</div>
+                                 }
+                                 {guild.is_installed && (
+                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center border border-black shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+                                       <Shield size={12} className="text-white fill-white" />
+                                    </div>
+                                 )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                 <h2 className="font-black text-xl text-white tracking-tight leading-tight truncate group-hover:text-blue-400 transition-colors italic uppercase">{guild.name}</h2>
+                                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] italic">Access Verified</p>
                               </div>
                            </div>
 
-                           <hr className="neon-divider" style={{ marginBottom:'1.25rem' }}/>
-
-                           <div style={{ marginTop:'auto' }}>
+                           <div className="mt-auto space-y-4">
                               {guild.is_installed ? (
-                                 <Link to={`/dashboard/${guild.id}`} className="btn-ghost" style={{ width:'100%', justifyContent:'center', textDecoration:'none' }}>
-                                   <Settings size={15}/> Manage
+                                 <Link to={`/dashboard/${guild.id}`} className="no-underline group/btn">
+                                    <DungeonButton 
+                                       variant="fire" 
+                                       className="w-full h-14"
+                                       icon={Settings}
+                                    >
+                                       Enter Realm
+                                    </DungeonButton>
                                  </Link>
                               ) : (
-                                 <a href={`https://discord.com/api/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID || '1415398482029711470'}&permissions=8&scope=bot`} target="_blank" rel="noreferrer" className="btn-primary" style={{ width:'100%', justifyContent:'center', textDecoration:'none' }}>
-                                   <Plus size={15}/> Install Bot
-                                 </a>
+                                 <DungeonButton 
+                                    variant="mana"
+                                    href={`https://discord.com/api/oauth2/authorize?client_id=${import.meta.env.VITE_DISCORD_CLIENT_ID || '1488552752333455481'}&permissions=8&scope=bot`} 
+                                    target="_blank"
+                                    className="w-full h-14"
+                                 >
+                                    SUMMON BOT
+                                 </DungeonButton>
                               )}
                            </div>
-                        </div>
+                        </MagicPanel>
                     </motion.div>
                  ))}
                </AnimatePresence>
                
                {!loading && guilds.length === 0 && (
-                 <div className="col-span-full py-20 text-center glass border-dashed">
-                    <p className="text-gray-400 text-lg">No servers found where you have Manage Guild permissions.</p>
+                 <div className="col-span-full py-32 text-center border-2 border-dashed border-white/5 rounded-3xl">
+                    <p className="text-slate-500 font-bold italic uppercase tracking-widest">No realms found in this dimension.</p>
                  </div>
                )}
             </div>
-          )}
-       </main>
+         )}
+      </main>
     </div>
   );
 }
