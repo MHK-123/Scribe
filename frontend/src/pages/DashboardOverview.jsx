@@ -26,12 +26,21 @@ export default function DashboardOverview() {
       axios.get(`${apiUrl}/settings/rewards/${id}`,     { headers }),
       axios.get(`${apiUrl}/guilds/${id}/weekly-hours`,  { headers }),
     ]).then(([statsRes, progRes, rewRes, chartRes]) => {
-      setStats(statsRes.data);
-      setProgress(progRes.data);
-      setChartData(chartRes.data);
-      const upcoming = rewRes.data.find(r => parseFloat(r.required_hours) > parseFloat(progRes.data.total_study_hours));
+      setStats(statsRes.data || {});
+      setProgress(progRes.data || { level: 0, total_xp: 0, total_study_hours: 0 });
+      setChartData(Array.isArray(chartRes.data) ? chartRes.data : []);
+      
+      const upcoming = Array.isArray(rewRes.data) 
+         ? rewRes.data.find(r => parseFloat(r.required_hours) > parseFloat(progRes.data?.total_study_hours || 0)) 
+         : null;
       setNextReward(upcoming);
-    }).catch(console.error);
+    }).catch(err => {
+      console.error('Failed to load dashboard data:', err);
+      // Fallback empty data so it doesn't crash the white screen
+      setStats({ activeVoiceChannels: 0, usersStudying: 0, totalHoursToday: 0 });
+      setProgress({ level: 0, total_xp: 0, total_study_hours: 0 });
+      setChartData([]);
+    });
 
     // Socket real-time updates
     const socket = io(apiUrl);
