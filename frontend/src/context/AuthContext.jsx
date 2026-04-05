@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/';
   };
 
-  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1488552752333455481&redirect_uri=${encodeURIComponent('https://scribe-backend-nasb.onrender.com/auth/callback')}&response_type=code&scope=identify%20guilds`;
+  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1488552752333455481&redirect_uri=${encodeURIComponent(`${apiUrl}/auth/callback`)}&response_type=code&scope=identify%20guilds`;
   
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, apiUrl, token, isRateLimited, discordAuthUrl }}>
