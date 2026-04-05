@@ -1,0 +1,10 @@
+node_modules/
+.env
+**/.env
+.DS_Store
+dist/
+*.log
+redirect.txt
+.venv/
+__pycache__/
+frontend/dist/

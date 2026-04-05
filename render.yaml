@@ -1,0 +1,49 @@
+## Render Blueprint — Scribe
+## Deploys two services from one repo:
+##   1. scribe-backend  (Node.js Web Service)
+##   2. scribe-bot      (Python Background Worker)
+
+services:
+
+  # ── Backend API + Socket.IO ────────────────────────────────────────────────────
+  - type: web
+    name: scribe-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_OAUTH_REDIRECT_URI
+        sync: false
+
+  # ── Discord Bot (continuous background process) ────────────────────────────────
+  - type: web
+    name: scribe-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    plan: free
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: VITE_API_URL
+        sync: false
