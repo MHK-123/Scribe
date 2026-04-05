@@ -5,8 +5,9 @@ import threading
 import signal
 import aiohttp
 import inspect
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# ─── Scribe Unity Entry Point (v6.0) ─────────────────────────────────────────
+# ─── Scribe Universal Launcher (v6.1 - Hybrid) ────────────────────────────────
 
 # ─── Signature Shield: Resolving AIOHTTP Parameter Collision ──────────────────
 # This intelligent proxy dynamically filters out any modern parameters (like 'ws_close')
@@ -20,32 +21,58 @@ class ResilientTimeout(_original_timeout):
 
 # Apply the shield globally
 aiohttp.ClientTimeout = ResilientTimeout
-aiohttp.ClientNSTimeout = ResilientTimeout
+aiohttp.ClientNSTiveTimeout = ResilientTimeout
 aiohttp.ClientWSTimeout = ResilientTimeout
 
-# Force unbuffered output for cleaner VPS logging
+# Force unbuffered output
 sys.stdout.reconfigure(line_buffering=True)
 
+# ─── Render Presence (Health Check) ───────────────────────────────────────────
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b"Scribe Hybrid Sentinel: Operational")
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+    def log_message(self, format, *args):
+        return  # Silence logs for clean VPS streams
+
+def run_health_check(port):
+    try:
+        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+        print(f"📡 [SENTINEL]: Ritual space secured on port {port} (Render Mode)", flush=True)
+        server.serve_forever()
+    except Exception as e:
+        print(f"⚠️ [SENTINEL]: Port binding failure: {e}", flush=True)
+
 if __name__ == "__main__":
-    print("--- [SENTINEL]: SCRIBE VPS IGNITION ---", flush=True)
+    print("--- [SENTINEL]: SCRIBE UNIFIED IGNITION ---", flush=True)
     
-    # 1. Sentinel Manifestation Loop (Exponential Backoff)
-    # This loop ensures the bot stays alive even if Discord or the Network blips.
+    # 1. Render/Cloud Compatibility: Fire health check only if PORT is present
+    render_port = os.getenv("PORT")
+    if render_port:
+        threading.Thread(target=run_health_check, args=(int(render_port),), daemon=True).start()
+    else:
+        print("🛡️ [SENTINEL]: No PORT detected. Running in Native VPS mode.", flush=True)
+
+    # 2. Resilient Manifestation Loop (Exponential Backoff)
     backoff = 15
-    max_backoff = 300 # 10 minutes max backoff
+    max_backoff = 300 
     
     while True:
         try:
             from bot.main import main_entry
             print("🔥 [SENTINEL]: Invoking Bot Core...", flush=True)
             main_entry()
-            # If main_entry exits cleanly, we exit the loop.
             break
         except Exception as e:
             error_msg = str(e)
             print(f"💀 [SENTINEL]: Core Ignition Failure: {error_msg}", flush=True)
             
-            # 2. Global Rate Limit Detection (429)
+            # 3. Global Rate Limit Detection (429)
             if "429" in error_msg or "rate limit" in error_msg.lower():
                 print(f"⏳ [SENTINEL]: Discord Global Rate Limit detected. Engaging extended cooldown (120s)...", flush=True)
                 time.sleep(120)

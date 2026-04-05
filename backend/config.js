@@ -9,8 +9,8 @@ export const config = {
   PORT: process.env.PORT || 3000,
   DATABASE_URL: process.env.DATABASE_URL,
   JWT_SECRET: process.env.JWT_SECRET || 'scribe_ritual_secret_v3',
-  // Absolute Gateway Anchor: Hardcoded production sanctuary
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+  // Absolute Gateway Anchor: Production sanctuary
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://scribe-azure.vercel.app',
   DISCORD_TOKEN: process.env.DISCORD_TOKEN,
   DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
   DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
