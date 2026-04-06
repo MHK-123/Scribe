@@ -111,18 +111,29 @@ router.get('/', async (req, res) => {
 // GET /guilds/:id — fetch single guild info (name, icon)
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id;
   try {
-    // 1. Check if user manages this guild via Discord API
-    const authRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bearer ${req.user.discord_access_token}` },
-    });
-    
-    const guild = authRes.data.find(g => g.id === id);
+    // 1. Try to use cached user guild list (Prevents parallel 429s during dashboard navigation)
+    let userGuilds = botCache.getUserGuilds(userId);
+
+    if (!userGuilds) {
+      const authRes = await axios.get('https://discord.com/api/users/@me/guilds', {
+        headers: { Authorization: `Bearer ${req.user.discord_access_token}` },
+      });
+      userGuilds = authRes.data;
+      botCache.setUserGuilds(userId, userGuilds);
+      console.log(`✅ [SENTINEL]: User guild list fetched and cached for ${userId} (Guild Info Request).`);
+    } else {
+      console.log(`⚡ [SENTINEL]: User guild list served from cache for ${userId} (Guild Info Request).`);
+    }
+
+    const guild = userGuilds.find(g => g.id === id);
     if (!guild) return res.status(404).json({ error: 'Guild not found in your managed list' });
 
-    const MANAGE_GUILD = 0x20;
-    const isManaged = (guild.permissions & MANAGE_GUILD) === MANAGE_GUILD;
-    const isInstalled = botGuildsCache.ids.includes(id);
+    const MANAGE_GUILD = 0x20n;
+    const userPerms = BigInt(guild.permissions);
+    const isManaged = (userPerms & MANAGE_GUILD) === MANAGE_GUILD;
+    const isInstalled = botCache.isBotPresent(id);
 
     if (!isManaged && !isInstalled) {
       return res.status(403).json({ error: 'Missing Manage Server permission' });
@@ -135,6 +146,13 @@ router.get('/:id', async (req, res) => {
     });
   } catch (err) {
     console.error(`GET /guilds/${id} error:`, err.message);
+    if (err.response?.status === 429) {
+      const retryAfter = err.response?.headers?.['retry-after'] || '60';
+      return res.status(429).json({ 
+        error: `High Flux Detected. Discord portal is temporarily locked.`,
+        details: `Try again after ${retryAfter} seconds.`
+      });
+    }
     res.status(500).json({ error: 'Failed to fetch guild info' });
   }
 });

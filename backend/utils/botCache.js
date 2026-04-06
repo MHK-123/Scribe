@@ -12,7 +12,7 @@ const BOT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 // Prevents parallel requests from the same user triggering multiple Discord calls.
 // Key: userId, Value: { guilds: [], expiresAt: timestamp }
 const USER_GUILD_CACHE = new Map();
-const USER_GUILD_TTL = 60 * 1000; // 60 seconds
+const USER_GUILD_TTL = 120 * 1000; // 120 seconds (2 minutes)
 
 export const botCache = {
   // ── Bot cache ─────────────────────────────────────────────────────────────

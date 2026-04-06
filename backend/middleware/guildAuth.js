@@ -50,7 +50,7 @@ export const authorizeGuild = async (req, res, next) => {
       const status = err.response?.status;
       const discordMsg = err.response?.data?.message;
 
-      console.error(`🛡️ [GuildAuth]: Discord user-guild fetch failed for guild ${guildId}:`, {
+      console.error(`🛡️ [GuildAuth]: Discord user-guild fetch failed for user ${userId} (Guild ${guildId}):`, {
         status,
         discordMsg,
         code: err.code,
