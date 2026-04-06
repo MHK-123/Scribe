@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 
 export const AuthContext = createContext();
@@ -6,32 +6,46 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // Initialize token state directly from localStorage
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [isRateLimited, setIsRateLimited] = useState(false);
-  
-  // ─── GATEWAY DETECTION: AUTOMATIC PRODUCTION HANDSHAKE ─────────────────────
+  const [retryAfter, setRetryAfter] = useState(0);
+
+  // ─── GATEWAY DETECTION ─────────────────────────────────────────────────────
   const isProd = window.location.hostname.includes('vercel.app');
   const prodApi = 'https://scribe-backend-nasb.onrender.com';
   const localApi = 'http://localhost:3000';
-  
   const apiUrl = (import.meta.env.VITE_API_URL || (isProd ? prodApi : localApi)).trim();
 
-  useEffect(() => {
-    console.log(`--- [SENTINEL]: Initializing Identity Node ---`);
-    console.log(`--- [SENTINEL]: Target Gateway: ${apiUrl} ---`);
-    console.log(`--- [SENTINEL]: Origin Domain: ${window.location.hostname} ---`);
-  }, [apiUrl]);
+  // ─── CENTRALIZED API INSTANCE (Hardened) ───────────────────────────────────
+  const api = useMemo(() => {
+    const instance = axios.create({
+      baseURL: apiUrl,
+      timeout: 10000,
+      headers: { Authorization: token ? `Bearer ${token}` : '' }
+    });
 
-  // Handle URL tokens and rate limits
+    instance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 429) {
+          console.error('⚠️ [SENTINEL]: PORTAL CENSORED (429). HIGH FLUX DETECTED.');
+          setIsRateLimited(true);
+          setRetryAfter(parseInt(error.response.headers['retry-after'] || 60));
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return instance;
+  }, [apiUrl, token]);
+
+  // Handle URL tokens and rate limits from Gateway
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('token');
     const errorParam = urlParams.get('error');
     
     if (errorParam === 'rate_limit_cooldown') {
-      console.error('⚠️ [SENTINEL]: PORTAL CENSORED BY CLOUDFLARE (1015). COOLDOWN ACTIVE.');
       setIsRateLimited(true);
       setLoading(false);
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -39,55 +53,40 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (urlToken) {
-      console.log('--- AuthContext: Token found in URL ---');
       localStorage.setItem('token', urlToken);
       setToken(urlToken);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
+  // Identity Verification Loop
   useEffect(() => {
     if (!token || isRateLimited) {
       setLoading(false);
       return;
     }
 
+    let isSubscribed = true;
     const verifyToken = async () => {
       try {
-        console.log('--- AuthContext: Verifying token ---');
-        const res = await axios.get(`${apiUrl}/auth/user`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        console.log('--- AuthContext: User verified ---');
-        setUser(res.data.user);
+        const res = await api.get('/auth/user');
+        if (isSubscribed) setUser(res.data.user);
       } catch (err) {
-        console.error('--- AuthContext: Verification error ---', err.response?.status || err.message);
-        
-        // ONLY remove token if it's a definitive auth failure (401 Unauthorized or 403 Forbidden)
-        // If it's a 502/504 (bad gateway/timeout) or network error, KEEP the token and try again later.
-        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-          console.warn('--- AuthContext: Session expired or invalid, cleaning up ---');
+        if (err.response?.status === 401 || err.response?.status === 403) {
           localStorage.removeItem('token');
           setToken(null);
           setUser(null);
         }
       } finally {
-        setLoading(false);
+        if (isSubscribed) setLoading(false);
       }
     };
 
     verifyToken();
-  }, [token, apiUrl]);
-
-  const login = (newToken, userData) => {
-    console.log('--- AuthContext: Logging in ---');
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
-    setUser(userData);
-  };
+    return () => { isSubscribed = false; };
+  }, [token, api, isRateLimited]);
 
   const logout = () => {
-    console.log('--- AuthContext: Logging out ---');
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -97,7 +96,7 @@ export const AuthProvider = ({ children }) => {
   const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1488552752333455481&redirect_uri=${encodeURIComponent(`${apiUrl}/auth/callback`)}&response_type=code&scope=identify%20guilds`;
   
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, apiUrl, token, isRateLimited, discordAuthUrl }}>
+    <AuthContext.Provider value={{ user, loading, logout, apiUrl, token, isRateLimited, retryAfter, discordAuthUrl, api }}>
       {children}
     </AuthContext.Provider>
   );

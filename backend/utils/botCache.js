@@ -1,46 +1,81 @@
+import Redis from 'ioredis';
+import { config } from '../config.js';
+
+let redis = null;
+if (config.REDIS_URL) {
+  redis = new Redis(config.REDIS_URL);
+  redis.on('error', (err) => console.error('Redis Client Error:', err));
+  redis.on('connect', () => console.log('✅ [Redis]: Connection manifested.'));
+} else {
+  console.warn('⚠️ [Redis]: REDIS_URL absent. Falling back to local in-memory storage (Inefficient for scale).');
+}
+
 /**
  * ─── Shared Bot Guild Cache ───────────────────────────────────────────────
  * Centralised vision store for the bot's known guild presence.
- * Used by guilds.js to track which servers the bot is in.
- * guildAuth.js reads from here but NEVER refreshes — only guilds.js refreshes.
+ * Using Redis for production-grade persistence and horizontal scaling.
  */
 
-let _botCache = { ids: [], lastFetch: 0 };
+// Memory fallback for environments without Redis
+const MEM_BOT_CACHE = { ids: [], lastFetch: 0 };
 const BOT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-// ── Per-user guild list cache ───────────────────────────────────────────────
-// Prevents parallel requests from the same user triggering multiple Discord calls.
-// Key: userId, Value: { guilds: [], expiresAt: timestamp }
-const USER_GUILD_CACHE = new Map();
-const USER_GUILD_TTL = 120 * 1000; // 120 seconds (2 minutes)
+const USER_GUILD_CACHE = new Map(); // Local fallback
+const USER_GUILD_TTL = 120 * 1000;  // 120 seconds (2 minutes)
 
 export const botCache = {
-  // ── Bot cache ─────────────────────────────────────────────────────────────
-  getIds: () => _botCache.ids,
-  getLastFetch: () => _botCache.lastFetch,
-  isExpired: () => Date.now() - _botCache.lastFetch > BOT_CACHE_TTL,
-
-  setIds: (ids) => {
-    _botCache = { ids, lastFetch: Date.now() };
+  // ── Bot Presence Cache ──────────────────────────────────────────────────
+  getIds: async () => {
+    if (redis) {
+      const ids = await redis.get('bot:guild_ids');
+      return ids ? JSON.parse(ids) : [];
+    }
+    return MEM_BOT_CACHE.ids;
   },
 
-  invalidate: () => {
-    _botCache.lastFetch = 0; // Force re-fetch on next request
+  setIds: async (ids) => {
+    if (redis) {
+      await redis.set('bot:guild_ids', JSON.stringify(ids), 'PX', BOT_CACHE_TTL);
+      await redis.set('bot:last_fetch', Date.now());
+    } else {
+      MEM_BOT_CACHE.ids = ids;
+      MEM_BOT_CACHE.lastFetch = Date.now();
+    }
   },
 
-  /** Returns true if the bot is present in the given guild */
-  isBotPresent: (guildId) => {
-    return _botCache.ids.includes(guildId);
+  isExpired: async () => {
+    if (redis) {
+      const lastFetch = await redis.get('bot:last_fetch');
+      return !lastFetch || (Date.now() - parseInt(lastFetch) > BOT_CACHE_TTL);
+    }
+    return Date.now() - MEM_BOT_CACHE.lastFetch > BOT_CACHE_TTL;
   },
 
-  // ── User guild cache ──────────────────────────────────────────────────────
+  invalidate: async () => {
+    if (redis) {
+      await redis.del('bot:last_fetch');
+    } else {
+      MEM_BOT_CACHE.lastFetch = 0;
+    }
+  },
+
+  isBotPresent: async (guildId) => {
+    const ids = await botCache.getIds();
+    return ids.includes(guildId);
+  },
+
+  // ── User's Personal Guild Cache ──────────────────────────────────────────
   /**
-   * Get a user's cached guild list. Returns null if cache is missing/expired.
+   * Get a user's cached guild list (30-120s TTL).
    */
-  getUserGuilds: (userId) => {
+  getUserGuilds: async (userId) => {
+    if (redis) {
+      const data = await redis.get(`user:guilds:${userId}`);
+      return data ? JSON.parse(data) : null;
+    }
+    
     const entry = USER_GUILD_CACHE.get(userId);
-    if (!entry) return null;
-    if (Date.now() > entry.expiresAt) {
+    if (!entry || Date.now() > entry.expiresAt) {
       USER_GUILD_CACHE.delete(userId);
       return null;
     }
@@ -48,19 +83,24 @@ export const botCache = {
   },
 
   /**
-   * Store a user's guild list in the short-lived cache.
+   * Store user's guild list in the cache.
    */
-  setUserGuilds: (userId, guilds) => {
-    USER_GUILD_CACHE.set(userId, {
-      guilds,
-      expiresAt: Date.now() + USER_GUILD_TTL,
-    });
+  setUserGuilds: async (userId, guilds) => {
+    if (redis) {
+      await redis.set(`user:guilds:${userId}`, JSON.stringify(guilds), 'PX', USER_GUILD_TTL);
+    } else {
+      USER_GUILD_CACHE.set(userId, {
+        guilds,
+        expiresAt: Date.now() + USER_GUILD_TTL,
+      });
+    }
   },
 
-  /**
-   * Clear cached guild list for a user (e.g. on explicit re-scry).
-   */
-  clearUserGuilds: (userId) => {
-    USER_GUILD_CACHE.delete(userId);
+  clearUserGuilds: async (userId) => {
+    if (redis) {
+      await redis.del(`user:guilds:${userId}`);
+    } else {
+      USER_GUILD_CACHE.delete(userId);
+    }
   },
 };

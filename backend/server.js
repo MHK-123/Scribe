@@ -18,14 +18,29 @@ import rateLimit from 'express-rate-limit';
 const app = express();
 const server = http.createServer(app);
 
-// ─── Security Layer ──────────────────────────────────────────────────────────
+// ─── Security Layer: Traffic Shaping ──────────────────────────────────────────
+app.set('trust proxy', 1); // Trust first proxy (Cloudflare/Render)
 app.use(helmet()); 
-const limiter = rateLimit({
+
+// 1. Global IP Rate Limit: Prevents brute-force/DDoS on all endpoints
+const globalIpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Limit each IP to 200 requests per window
-  message: { error: 'Excessive mana usage detected. Please wait before retrying.' }
+  max: 500, 
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Excessive portal usage. Please wait 15 minutes.' }
 });
-app.use('/api/', limiter); // Apply to API routes if they existed, but here we apply to all sub-routes
+app.use(globalIpLimiter);
+
+// 2. Per-User API Limit: Prevents a single hunter from flooding Discord/DB
+const userApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  keyGenerator: (req) => req.user?.id || req.ip, // Fallback to IP if unauth
+  message: { error: 'Hunter activity limit reached. Calibrate your requests.' }
+});
+// Applied to actual resource routes
+app.use(['/guilds', '/settings', '/pomodoro'], userApiLimiter);
 
 // Init Socket.io
 initSocket(server);

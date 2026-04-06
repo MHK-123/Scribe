@@ -9,7 +9,7 @@ import MagicPanel from '../components/MagicPanel.jsx';
 import DungeonButton from '../components/DungeonButton.jsx';
 
 export default function ServerSelect() {
-  const { token, apiUrl, user, logout } = useContext(AuthContext);
+  const { token, api, user, logout, isRateLimited, retryAfter } = useContext(AuthContext);
   const [guilds, setGuilds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -17,19 +17,21 @@ export default function ServerSelect() {
   const [error, setError] = useState(null);
 
   const fetchGuilds = async (force = false) => {
+    if (loading || refreshing) return; // Prevent double-triggering
+    
     if (force) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const res = await axios.get(`${apiUrl}/guilds${force ? '?force=true' : ''}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/guilds${force ? '?force=true' : ''}`);
       setGuilds(res.data);
-      setError(null); // Clear errors on success
+      setError(null);
     } catch (err) {
       console.error(err);
       if (err.response?.status === 401) logout();
-      setError(err.response?.data?.error || "Connection to sanctuary lost.");
+      if (err.response?.status !== 429) {
+        setError(err.response?.data?.error || "Connection to sanctuary lost.");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -37,25 +39,25 @@ export default function ServerSelect() {
   };
 
   useEffect(() => {
-    if (token) fetchGuilds();
-  }, [apiUrl, token, logout]);
+    if (token && !isRateLimited) fetchGuilds();
+  }, [token, isRateLimited]);
 
-  // --- Real-time Manifestation Sync ---
+  // --- Real-time Manifestation Sync (Hardened Polling) ---
   useEffect(() => {
     let pollInterval;
-    if (isSummoning) {
+    if (isSummoning && !isRateLimited) {
+      // Slowed down to 12s to be conservative with Discord's IP rate limits
       pollInterval = setInterval(() => {
-        fetchGuilds(true); // Force clear backend cache
-      }, 3000);
+        fetchGuilds(true); 
+      }, 12000);
       
-      // Safety timeout (Stop polling after 1 minute)
       setTimeout(() => {
         setIsSummoning(false);
         clearInterval(pollInterval);
       }, 60000);
     }
     return () => clearInterval(pollInterval);
-  }, [isSummoning]);
+  }, [isSummoning, isRateLimited]);
 
   const handleSummon = (guildId) => {
     const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || '1488552752333455481';
@@ -209,19 +211,28 @@ export default function ServerSelect() {
                     </motion.div>
                  ))}
                </AnimatePresence>
-               
-               {!loading && error && (
-                  <div className="col-span-full py-24 flex flex-col items-center justify-center text-center bg-red-500/5 border border-red-500/10 rounded-3xl space-y-6">
-                    <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center mb-2">
-                       <ShieldAlert className="w-8 h-8 text-red-500" />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-bold uppercase tracking-tight text-white">{error}</h3>
-                      <p className="text-slate-500 text-sm max-w-sm">The portal to Discord is unstable or blocked by High Flux. Determine if the Scribe ignition has triggered a rate limit.</p>
-                    </div>
-                    <DungeonButton variant="danger" onClick={() => fetchGuilds(true)} className="h-10 px-6 text-[10px]">Retry Synchronizing</DungeonButton>
-                  </div>
-                )}
+                              {!loading && (error || isRateLimited) && (
+                   <div className="col-span-full py-24 flex flex-col items-center justify-center text-center bg-red-500/5 border border-red-500/10 rounded-3xl space-y-6">
+                     <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center mb-2">
+                        <ShieldAlert className="w-8 h-8 text-red-500" />
+                     </div>
+                     <div className="space-y-2 px-6">
+                       <h3 className="text-xl font-bold uppercase tracking-tight text-white">
+                         {isRateLimited ? "HIGH FLUX DETECTED. DISCORD PORTAL IS TEMPORARILY LOCKED (RATE LIMIT)." : error}
+                       </h3>
+                       <p className="text-slate-500 text-sm max-w-lg mx-auto">
+                         {isRateLimited 
+                           ? `The portal to Discord is unstable or blocked by High Flux. Please wait approximately ${retryAfter} seconds for the Scribe ignition to recover.`
+                           : "The portal to Discord is unstable or blocked by High Flux. Determine if the Scribe ignition has triggered a rate limit."}
+                       </p>
+                     </div>
+                     {!isRateLimited && (
+                       <DungeonButton variant="danger" onClick={() => fetchGuilds(true)} className="h-10 px-6 text-[10px]">
+                         Retry Synchronizing
+                       </DungeonButton>
+                     )}
+                   </div>
+                 )}
                 
                 {!loading && !error && guilds.length === 0 && (
                   <div className="col-span-full py-32 text-center border-2 border-dashed border-white/5 rounded-3xl">

@@ -5,6 +5,9 @@ import { verifyAdmin } from '../middleware/admin.js';
 import axios from 'axios';
 import { config } from '../config.js';
 
+import { discordService } from '../services/discordService.js';
+import { botCache } from '../utils/botCache.js';
+
 const router = express.Router();
 router.use(authenticate, verifyAdmin);
 
@@ -28,46 +31,31 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Simple in-memory cache for global guilds to prevent Discord rate-limiting
-let globalGuildsCache = { data: null, lastFetch: 0 };
-const CACHE_TTL = 30 * 1000; // 30 seconds for admin view
-
 // GET /admin/guilds - List all guilds with live status + member counts (cached)
 router.get('/guilds', async (req, res) => {
   try {
-    // 1. Fetch metadata from DB (configs + feature flags)
+    // 1. Fetch metadata from DB
     const dbGuilds = await query('SELECT * FROM guild_configs');
     const configsMap = {};
     dbGuilds.rows.forEach(row => {
       configsMap[row.guild_id] = row;
     });
 
-    // 2. Fetch guilds from Discord (as before for basic list)
-    if (globalGuildsCache.data && (Date.now() - globalGuildsCache.lastFetch < CACHE_TTL)) {
-      const merged = globalGuildsCache.data.map(g => ({
-        ...g,
-        config: configsMap[g.id] || null
-      }));
-      return res.json(merged);
-    }
-
-    const botRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
-    });
+    // 2. Fetch guilds from Discord via Service (Handles Redis + 429s)
+    const botGuilds = await discordService.getBotGuilds();
     
-    // 3. Request extra info (member counts) from bot via socket (optional but better)
-    // For now, we merge DB configs and basic Discord info
-    const merged = botRes.data.map(g => ({
-      ...g,
-      config: configsMap[g.id] || null
+    // We fetch details for each guild? No, @me/guilds only gives basic names/icons.
+    // To get member counts, we'd need another call per guild or socket data.
+    // For now, let's keep the basic merging.
+    
+    const merged = botGuilds.map(id => ({
+      id,
+      config: configsMap[id] || null
     }));
 
-    globalGuildsCache = { data: botRes.data, lastFetch: Date.now() };
     res.json(merged);
   } catch (err) {
-    if (globalGuildsCache.data) {
-       return res.json(globalGuildsCache.data);
-    }
+    console.error('Admin Scrying Failed:', err.message);
     res.status(500).json({ error: 'Scrying failed.' });
   }
 });
@@ -75,7 +63,7 @@ router.get('/guilds', async (req, res) => {
 // PATCH /admin/guilds/:id/features - Toggle feature flags
 router.patch('/guilds/:id/features', async (req, res) => {
   const { id } = req.params;
-  const { feature, value } = req.body; // e.g., { feature: 'is_vc_control_enabled', value: true }
+  const { feature, value } = req.body; 
 
   const allowedFeatures = ['is_vc_control_enabled', 'is_pomodoro_enabled', 'is_leveling_enabled'];
   if (!allowedFeatures.includes(feature)) {
@@ -96,12 +84,10 @@ router.patch('/guilds/:id/features', async (req, res) => {
 // DELETE /admin/guilds/:id - Sever connection to a guild
 router.delete('/guilds/:id', async (req, res) => {
   try {
-    await axios.delete(`https://discord.com/api/users/@me/guilds/${req.params.id}`, {
-      headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
-    });
+    await discordService.leaveGuild(req.params.id);
     res.json({ success: true, message: 'Connection severed successfully.' });
   } catch (err) {
-    console.error('Admin Guild Delete Error:', err.response?.data || err.message);
+    console.error('Admin Guild Delete Error:', err.message);
     res.status(500).json({ error: 'The ritual failed: Could not sever global link.' });
   }
 });

@@ -58,38 +58,11 @@ router.get('/callback', async (req, res) => {
       redirect_uri: redirectUri
     });
 
-    // 🧪 [Gateway]: Initiating Code Exchange with Resilience Ritual
-    console.log(`📡 [Gateway]: Redirect URI Anchor: ${redirectUri}`);
-    
-    let tokenRes;
-    let retries = 2;
-    while (retries >= 0) {
-      try {
-        tokenRes = await axios.post('https://discord.com/api/oauth2/token', params, {
-          headers: { 
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'ScribeCore/v3.1'
-          }
-        });
-        break; // SUCCESS: Break retrieval loop
-      } catch (err) {
-        if (err.response?.status === 429 && retries > 0) {
-          console.warn(`⏳ [Gateway]: Handshake rate limited. Retrying in 2s... (${retries} left)`);
-          await new Promise(r => setTimeout(r, 2000));
-          retries--;
-          continue;
-        }
-        throw err; // REJECT: Ritual failed
-      }
-    }
-
-    const { access_token } = tokenRes.data;
+    // 🧪 [Gateway]: Initiating Code Exchange via resilient DiscordService
+    const { access_token } = await discordService.exchangeCodeForToken(code);
 
     // Fetch user info
-    const userRes = await axios.get('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
-    const userData = userRes.data;
+    const userData = await discordService.getUserInfo(access_token);
 
     // Create session / JWT
     const token = jwt.sign(
@@ -106,7 +79,6 @@ router.get('/callback', async (req, res) => {
     // Redirect to the dashboard with the token
     const redirectDashboardUrl = `${config.FRONTEND_URL}/servers?token=${token}`;
     console.log(`🔗 [Gateway]: Identity handshake SUCCESS for ${userData.username}`);
-    console.log(`🚀 [Gateway]: Directing Hunter to: ${redirectDashboardUrl}`);
     res.writeHead(302, { 'Location': redirectDashboardUrl });
     res.end();
   } catch (err) {

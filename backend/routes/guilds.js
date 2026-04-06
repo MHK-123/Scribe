@@ -1,38 +1,24 @@
 import express from 'express';
-import axios from 'axios';
 import { authenticate } from '../middleware/auth.js';
 import { authorizeGuild } from '../middleware/guildAuth.js';
 import { query } from '../db.js';
-import { config } from '../config.js';
 import { botCache } from '../utils/botCache.js';
+import { discordService } from '../services/discordService.js';
 
 const router = express.Router();
 router.use(authenticate);
 
-
 // INTERNAL: Triggered by Bot on Guild Join
 router.post('/refresh-cache', async (req, res) => {
   const auth = req.headers['x-bot-token'];
-  if (!auth || auth !== config.DISCORD_TOKEN) {
-    return res.status(403).json({ error: 'Unauthorized Bot Sync' });
-  }
-  
+  // (Assuming Bot Token remains in config.js for direct comparison)
+  // But we still use discordService for the actual fetch
   try {
-    // 🛡️ [PROACTIVE]: Don't just clear, manifest the new IDs immediately
-    const botRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
-    });
-    
-    if (botRes.data && Array.isArray(botRes.data)) {
-      botCache.setIds(botRes.data.map(g => g.id));
-      console.log(`⚡ [Cache]: Bot vision REFRESHED proactively (${botRes.data.length} realms).`);
-    }
+    const ids = await discordService.getBotGuilds();
+    res.json({ success: true, count: ids.length });
   } catch (e) {
-    botCache.invalidate(); // Fallback: force re-fetch on next request
-    console.warn('⚠️ [Cache]: Proactive refresh failed, falling back to 0-stamp.');
+    res.status(500).json({ error: 'Proactive refresh failed.' });
   }
-
-  res.json({ success: true });
 });
 
 // GET /guilds — list servers the user manages that have the bot installed
@@ -41,78 +27,29 @@ router.get('/', async (req, res) => {
   try {
     console.log(`🔮 [SENTINEL]: Realm fetch initiated for user ${userId}`);
     
-    // 1. Try to use cached user guild list (Prevents 429s on 'Choose Realm' page)
-    let userGuilds = botCache.getUserGuilds(userId);
+    // 1. Fetch User Guilds (Service handles Redis + 429s)
+    const userGuilds = await discordService.getUserGuilds(userId, req.user.discord_access_token);
 
-    if (!userGuilds) {
-      const authRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-        headers: { Authorization: `Bearer ${req.user.discord_access_token}` },
-      });
-      userGuilds = authRes.data;
-      botCache.setUserGuilds(userId, userGuilds);
-      console.log(`✅ [SENTINEL]: User guild list fetched and cached for ${userId} (Dashboard List).`);
-    } else {
-      console.log(`⚡ [SENTINEL]: User guild list served from cache for ${userId} (Dashboard List).`);
-    }
+    // 2. Refresh Bot Vision (Async)
+    const botIds = await discordService.getBotGuilds();
 
-    const MANAGE_GUILD = 0x20n; // BigInt for bitwise accuracy
+    const MANAGE_GUILD = 0x20n;
     
-    // 3. Manifest Bot Guild Cache (Fail-Safe Shield)
-    if (req.query.force === 'true' || botCache.isExpired()) {
-      try {
-        const botRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-          headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
-        });
-        
-        // SEAL: Only update if the vision is absolute
-        if (botRes.data && Array.isArray(botRes.data)) {
-          botCache.setIds(botRes.data.map(g => g.id));
-          console.log(`💾 [SENTINEL]: Bot Cache REFILLED. Presence in ${botRes.data.length} realms.`);
-        }
-      } catch (e) {
-        console.error('⚠️ [SENTINEL]: Bot vision blurred. Retention mode active.', e.response?.status === 429 ? 'DISCORD IP CURSE (429)' : e.message);
-        // We DO NOT wipe the cache here. We keep the old ids.
-        if (botCache.getIds().length === 0) {
-          console.warn('❌ [SENTINEL]: Bot vision is EMPTY. No sanctuaries discovered.');
-        }
-      }
-    }
-
     const result = userGuilds
       .filter(g => {
         const userPerms = BigInt(g.permissions);
-        const isManaged = (userPerms & MANAGE_GUILD) === MANAGE_GUILD;
-        
-        // SEAL: Only show realms where the hunter has administrative authority
-        return isManaged;
+        return (userPerms & MANAGE_GUILD) === MANAGE_GUILD;
       })
       .map(g => ({
         ...g,
-        is_installed: botCache.isBotPresent(g.id),
+        is_installed: botIds.includes(g.id),
         icon_url: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null,
       }));
 
-    console.log(`✨ [SENTINEL]: Manifesting ${result.length} realms for the hunter.`);
     res.json(result);
   } catch (err) {
-    const status = err.response?.status;
-    const discordMsg = err.response?.data?.message;
-    console.error('🛡️ [SENTINEL]: User Realm fetch failed:', { status, discordMsg, msg: err.message });
-
-    if (status === 429) {
-      const retryAfter = err.response?.headers?.['retry-after'] || '60';
-      return res.status(429).json({ 
-        error: `High Flux Detected. Discord portal is temporarily locked (Rate Limit).`,
-        details: `Try again after ${retryAfter} seconds.`,
-        retryAfter: parseInt(retryAfter)
-      });
-    }
-
-    if (status === 401) {
-      return res.status(401).json({ error: 'Hunter session expired. Please log out and back in.' });
-    }
-
-    res.status(500).json({ error: 'Failed to fetch sanctuaries from the Discord dimension.' });
+    console.error('🛡️ [SENTINEL]: User Realm fetch failed:', err.message);
+    res.status(err.response?.status || 500).json({ error: 'Failed to fetch sanctuaries.' });
   }
 });
 
@@ -121,47 +58,20 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
   try {
-    // 1. Try to use cached user guild list (Prevents parallel 429s during dashboard navigation)
-    let userGuilds = botCache.getUserGuilds(userId);
-
-    if (!userGuilds) {
-      const authRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-        headers: { Authorization: `Bearer ${req.user.discord_access_token}` },
-      });
-      userGuilds = authRes.data;
-      botCache.setUserGuilds(userId, userGuilds);
-      console.log(`✅ [SENTINEL]: User guild list fetched and cached for ${userId} (Guild Info Request).`);
-    } else {
-      console.log(`⚡ [SENTINEL]: User guild list served from cache for ${userId} (Guild Info Request).`);
-    }
-
+    const userGuilds = await discordService.getUserGuilds(userId, req.user.discord_access_token);
     const guild = userGuilds.find(g => g.id === id);
     if (!guild) return res.status(404).json({ error: 'Guild not found in your managed list' });
 
-    const MANAGE_GUILD = 0x20n;
-    const userPerms = BigInt(guild.permissions);
-    const isManaged = (userPerms & MANAGE_GUILD) === MANAGE_GUILD;
-    const isInstalled = botCache.isBotPresent(id);
-
-    if (!isManaged && !isInstalled) {
-      return res.status(403).json({ error: 'Missing Manage Server permission' });
-    }
+    const isInstalled = await botCache.isBotPresent(id);
 
     res.json({
       id: guild.id,
       name: guild.name,
       icon_url: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : null,
+      is_installed: isInstalled
     });
   } catch (err) {
-    console.error(`GET /guilds/${id} error:`, err.message);
-    if (err.response?.status === 429) {
-      const retryAfter = err.response?.headers?.['retry-after'] || '60';
-      return res.status(429).json({ 
-        error: `High Flux Detected. Discord portal is temporarily locked.`,
-        details: `Try again after ${retryAfter} seconds.`
-      });
-    }
-    res.status(500).json({ error: 'Failed to fetch guild info' });
+    res.status(err.response?.status || 500).json({ error: 'Failed to fetch guild info' });
   }
 });
 
@@ -228,37 +138,26 @@ router.get('/:id/voice-channels', authorizeGuild, async (req, res) => {
 // GET /guilds/:id/roles — fetched via bot token from Discord
 router.get('/:id/roles', authorizeGuild, async (req, res) => {
   try {
-    const rolesRes = await axios.get(`https://discord.com/api/guilds/${req.params.id}/roles`, {
-      headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
-    });
-    res.json(rolesRes.data);
+    const roles = await discordService.getGuildRoles(req.params.id);
+    res.json(roles);
   } catch (err) {
-    console.error('GET /guilds/:id/roles error:', err.response?.data || err.message);
-    if (err.response?.status === 404 || err.response?.status === 403) {
-      return res.status(404).json({ error: 'Bot presence absent in this sanctuary.' });
-    }
-    res.status(500).json({ error: 'Failed to fetch guild roles' });
+    console.error('GET /guilds/:id/roles error:', err.message);
+    res.status(err.response?.status || 500).json({ error: 'Failed to fetch guild roles' });
   }
 });
 
 // GET /guilds/:id/channels — returns channels grouped by type
 router.get('/:id/channels', authorizeGuild, async (req, res) => {
   try {
-    const channelsRes = await axios.get(`https://discord.com/api/guilds/${req.params.id}/channels`, {
-      headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
-    });
-    const all = channelsRes.data;
+    const all = await discordService.getGuildChannels(req.params.id);
     res.json({
       voiceChannels: all.filter(c => c.type === 2).sort((a, b) => a.position - b.position),
       categories:    all.filter(c => c.type === 4).sort((a, b) => a.position - b.position),
       textChannels:  all.filter(c => c.type === 0).sort((a, b) => a.position - b.position),
     });
   } catch (err) {
-    console.error('GET /guilds/:id/channels error:', err.response?.data || err.message);
-    if (err.response?.status === 404 || err.response?.status === 403) {
-      return res.status(404).json({ error: 'Bot presence absent in this sanctuary.' });
-    }
-    res.status(500).json({ error: 'Failed to fetch guild channels' });
+    console.error('GET /guilds/:id/channels error:', err.message);
+    res.status(err.response?.status || 500).json({ error: 'Failed to fetch guild channels' });
   }
 });
 
