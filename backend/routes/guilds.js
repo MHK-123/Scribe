@@ -37,15 +37,23 @@ router.post('/refresh-cache', async (req, res) => {
 
 // GET /guilds — list servers the user manages that have the bot installed
 router.get('/', async (req, res) => {
+  const userId = req.user.id;
   try {
-    console.log(`🔮 [SENTINEL]: Realm fetch initiated for user ${req.user.id}`);
+    console.log(`🔮 [SENTINEL]: Realm fetch initiated for user ${userId}`);
     
-    const authRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bearer ${req.user.discord_access_token}` },
-    });
+    // 1. Try to use cached user guild list (Prevents 429s on 'Choose Realm' page)
+    let userGuilds = botCache.getUserGuilds(userId);
 
-    const userGuilds = authRes.data;
-    console.log(`✅ [SENTINEL]: Discord returned ${userGuilds.length} user realms.`);
+    if (!userGuilds) {
+      const authRes = await axios.get('https://discord.com/api/users/@me/guilds', {
+        headers: { Authorization: `Bearer ${req.user.discord_access_token}` },
+      });
+      userGuilds = authRes.data;
+      botCache.setUserGuilds(userId, userGuilds);
+      console.log(`✅ [SENTINEL]: User guild list fetched and cached for ${userId} (Dashboard List).`);
+    } else {
+      console.log(`⚡ [SENTINEL]: User guild list served from cache for ${userId} (Dashboard List).`);
+    }
 
     const MANAGE_GUILD = 0x20n; // BigInt for bitwise accuracy
     
