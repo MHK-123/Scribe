@@ -14,9 +14,14 @@ db_pool = None
 async def get_db_pool():
     global db_pool
     if db_pool is None:
-        print("🔮 [DB POOL]: Igniting the Sanctuary Library connection...")
-        db_pool = await asyncpg.create_pool(DATABASE_URL)
-    return db_pool
+        try:
+            print("🔮 [DB POOL]: Igniting the Sanctuary Library connection (Timeout: 5s)...")
+            # Anchor: Use a 5s timeout to prevent infinite hanging Rifts
+            db_pool = await asyncpg.create_pool(DATABASE_URL, command_timeout=5.0, connect_timeout=5.0)
+        except Exception as e:
+            print(f"⚠️ [DB POOL FAIL]: Sanctuary Library is unreachable: {e}")
+            db_pool = "FAILED" # Mark as failed to prevent re-trying every second
+    return db_pool if db_pool != "FAILED" else None
 
 router = APIRouter()
 
@@ -133,34 +138,72 @@ async def get_admin_stats():
         print(f"❌ [DB STATS FAIL]: {e}")
         return {"total_users": 0, "active_guilds": 0, "active_connections": 0}
 
-@router.get("/admin/guilds")
-async def get_admin_guilds(request: Request):
-    """Manifests the Hall of Sanctuaries from the Sanctuary Library."""
-    try:
-        pool = await get_db_pool()
-        async with pool.acquire() as conn:
-            # Manifest every realm registered in the Library
-            rows = await conn.fetch("SELECT guild_id, vc_name_template FROM guild_configs")
-            
-            # Enrich with Names (First pass: IDs as identifiers)
-            guilds = []
-            for row in rows:
-                guilds.append({
-                    "id": row["guild_id"],
-                    "name": f"Manifested Realm ({row['guild_id']})",
-                    "active": True,
-                    "is_installed": True
-                })
-            return guilds
-    except Exception as e:
-        print(f"❌ [DB GUILDS FAIL]: {e}")
-        return []
-
 @router.get("/guilds")
 async def get_guilds(request: Request):
-    """Bridge Ritual: Merges Discord vision with the Sanctum Library."""
-    # Note: Calling admin_guilds for now to ensure visibility
-    return await get_admin_guilds(request)
+    """Manifests the Hall of Realms with Dual-Vision resilience."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return []
+
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        access_token = payload.get("access_token")
+    except Exception:
+        return []
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        # 1. Vision: Fetch User's Discord Realm List
+        user_guilds_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
+            "Authorization": f"Bearer {access_token}"
+        })
+        
+        if user_guilds_res.status_code != 200:
+            print(f"❌ [DISCORD FETCH FAIL]: {user_guilds_res.status_code}")
+            return []
+
+        user_guilds = user_guilds_res.json()
+
+        # 2. Vision: Fetch Bot's Installed Realms
+        bot_guilds_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
+            "Authorization": f"Bot {DISCORD_TOKEN}"
+        })
+        bot_guild_ids = [g["id"] for g in bot_guilds_res.json()] if bot_guilds_res.status_code == 200 else []
+
+        # 3. Sanctuary Library: Fetch Manifested Realms (DB)
+        db_guild_ids = []
+        try:
+            pool = await get_db_pool()
+            if pool:
+                async with pool.acquire() as conn:
+                    rows = await conn.fetch("SELECT guild_id FROM guild_configs")
+                    db_guild_ids = [row["guild_id"] for row in rows]
+        except Exception as e:
+            print(f"⚠️ [DB SYNC FAIL]: Using Discord vision fallback: {e}")
+
+        # 4. Merge the Visions
+        MANAGE_GUILD = 0x20
+        ADMINISTRATOR = 0x8
+        
+        final_realms = []
+        for g in user_guilds:
+            perms = int(g["permissions"])
+            if (perms & MANAGE_GUILD) == MANAGE_GUILD or (perms & ADMINISTRATOR) == ADMINISTRATOR:
+                final_realms.append({
+                    "id": g["id"],
+                    "name": g["name"],
+                    "icon": g.get("icon"),
+                    "icon_url": f"https://cdn.discordapp.com/icons/{g['id']}/{g['icon']}.png" if g.get("icon") else None,
+                    "is_installed": g["id"] in bot_guild_ids,
+                    "is_manifested": g["id"] in db_guild_ids # True if in DB
+                })
+        
+        return final_realms
+
+@router.get("/admin/guilds")
+async def get_admin_guilds(request: Request):
+    """Echo Portal: Uses the same Dual-Vision for admin routes."""
+    return await get_guilds(request)
 
 @router.get("/auth/callback")
 async def callback(code: str = None, error: str = None):
