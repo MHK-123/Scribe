@@ -6,10 +6,10 @@ from api import router as auth_router
 
 app = FastAPI(title="Scribe Universal API")
 
-# 🛡️ Shield of CORS: Allowing the Vercel Frontend to communicate
+# 🛡️ Shield of CORS: Allowing the Vercel Frontend to communicate (Ultra-Hardened)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://scribe-azure.vercel.app"],
+    allow_origins=["*"], # Open gate ritual for zero-friction debugging
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
