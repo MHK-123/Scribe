@@ -25,20 +25,20 @@ const USER_GUILD_TTL = 120 * 1000;  // 120 seconds (2 minutes)
 
 export const botCache = {
   // ── Bot Presence Cache ──────────────────────────────────────────────────
-  getIds: async () => {
+  getBotPresence: async () => {
     if (redis) {
-      const ids = await redis.get('bot:guild_ids');
-      return ids ? JSON.parse(ids) : [];
+      const data = await redis.get('bot:guild_meta');
+      return data ? JSON.parse(data) : [];
     }
-    return MEM_BOT_CACHE.ids;
+    return MEM_BOT_CACHE.guilds || [];
   },
 
-  setIds: async (ids) => {
+  setBotPresence: async (guilds) => {
     if (redis) {
-      await redis.set('bot:guild_ids', JSON.stringify(ids), 'PX', BOT_CACHE_TTL);
+      await redis.set('bot:guild_meta', JSON.stringify(guilds), 'PX', BOT_CACHE_TTL);
       await redis.set('bot:last_fetch', Date.now());
     } else {
-      MEM_BOT_CACHE.ids = ids;
+      MEM_BOT_CACHE.guilds = guilds;
       MEM_BOT_CACHE.lastFetch = Date.now();
     }
   },
@@ -60,8 +60,8 @@ export const botCache = {
   },
 
   isBotPresent: async (guildId) => {
-    const ids = await botCache.getIds();
-    return ids.includes(guildId);
+    const guilds = await botCache.getBotPresence();
+    return guilds.some(g => (g.id || g) === guildId);
   },
 
   // ── User's Personal Guild Cache ──────────────────────────────────────────

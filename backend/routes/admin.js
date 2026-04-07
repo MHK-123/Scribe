@@ -41,16 +41,15 @@ router.get('/guilds', async (req, res) => {
       configsMap[row.guild_id] = row;
     });
 
-    // 2. Fetch guilds from Discord via Service (Handles Redis + 429s)
+    // 2. Fetch full guild details from Bot Vision
     const botGuilds = await discordService.getBotGuilds();
     
-    // We fetch details for each guild? No, @me/guilds only gives basic names/icons.
-    // To get member counts, we'd need another call per guild or socket data.
-    // For now, let's keep the basic merging.
-    
-    const merged = botGuilds.map(id => ({
-      id,
-      config: configsMap[id] || null
+    const merged = botGuilds.map(guild => ({
+      id: guild.id,
+      name: guild.name || 'Unknown Realm',
+      icon: guild.icon,
+      memberCount: guild.memberCount || 0,
+      config: configsMap[guild.id] || null
     }));
 
     res.json(merged);

@@ -73,7 +73,7 @@ export const discordService = {
     
     // 1. Check Redis via botCache
     if (!(await botCache.isExpired())) {
-      return await botCache.getIds();
+      return await botCache.getBotPresence();
     }
 
     if (activeRequests.has(cacheKey)) return activeRequests.get(cacheKey);
@@ -84,9 +84,17 @@ export const discordService = {
         const { data } = await discordClient.get('/users/@me/guilds', {
           headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
         });
-        const ids = data.map(g => g.id);
-        await botCache.setIds(ids);
-        return ids;
+        
+        // Store full metadata for Admin and Select manifests
+        const guilds = data.map(g => ({
+          id: g.id,
+          name: g.name,
+          icon: g.icon,
+          memberCount: g.approximate_member_count || 0
+        }));
+
+        await botCache.setBotPresence(guilds);
+        return guilds;
       } finally {
         activeRequests.delete(cacheKey);
       }

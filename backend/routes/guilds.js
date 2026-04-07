@@ -34,11 +34,14 @@ router.get('/', async (req, res) => {
     const botIds = await discordService.getBotGuilds();
 
     const MANAGE_GUILD = 0x20n;
+    const ADMINISTRATOR = 0x8n;
     
     const result = userGuilds
       .filter(g => {
         const userPerms = BigInt(g.permissions);
-        return (userPerms & MANAGE_GUILD) === MANAGE_GUILD;
+        const hasManage = (userPerms & MANAGE_GUILD) === MANAGE_GUILD;
+        const hasAdmin = (userPerms & ADMINISTRATOR) === ADMINISTRATOR;
+        return hasManage || hasAdmin;
       })
       .map(g => ({
         ...g,

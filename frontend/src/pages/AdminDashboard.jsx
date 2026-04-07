@@ -81,8 +81,8 @@ export default function AdminDashboard() {
   };
 
   const filteredGuilds = guilds.filter(g => 
-    g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    g.id.includes(searchTerm)
+    g.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    g.id?.includes(searchTerm)
   );
 
   if (loading) return (
