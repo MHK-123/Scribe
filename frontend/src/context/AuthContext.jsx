@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
   const api = useMemo(() => {
     const instance = axios.create({
       baseURL: apiUrl,
-      timeout: 10000,
+      timeout: 60000, // Manifested: 60s timeout to allow Render Sanctuary to wake up
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     });
 
