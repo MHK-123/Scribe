@@ -98,6 +98,11 @@ async def get_guilds(request: Request):
         print(f"✅ [REALM MANIFESTED]: Found {len(filtered)} managed servers.")
         return filtered
 
+@router.get("/admin/guilds")
+async def get_admin_guilds(request: Request):
+    """Echo Portal: Allows /admin/guilds to reach the same vision as /guilds."""
+    return await get_guilds(request)
+
 # --- Mock Admin Routes to bypass Forbidden ---
 @router.get("/admin/stats")
 async def get_admin_stats():
