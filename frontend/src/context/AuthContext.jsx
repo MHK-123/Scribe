@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
 
   // ─── GATEWAY DETECTION ─────────────────────────────────────────────────────
   const isProd = window.location.hostname.includes('vercel.app');
-  const prodApi = 'https://scribe-backend-nasb.onrender.com';
+  const prodApi = 'https://scribe-1r8k.onrender.com';
   const localApi = 'http://localhost:3000';
   const apiUrl = (import.meta.env.VITE_API_URL || (isProd ? prodApi : localApi)).trim();
 

@@ -174,10 +174,16 @@ export const discordService = {
     });
 
     console.log('📡 [DiscordService]: Initiating OAuth2 token exchange...');
-    const { data } = await discordClient.post('/oauth2/token', params, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
-    return data;
+    try {
+      const { data } = await discordClient.post('/oauth2/token', params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      return data;
+    } catch (err) {
+      console.error('❌ [DiscordService]: Token exchange failed!');
+      console.error('Detailed Error Response:', err.response?.data || err.message);
+      throw err;
+    }
   },
 
   /**

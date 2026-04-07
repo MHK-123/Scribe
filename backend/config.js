@@ -11,9 +11,9 @@ export const config = {
   JWT_SECRET: process.env.JWT_SECRET || 'scribe_ritual_secret_v3',
   // Absolute Gateway Anchor: Production sanctuary
   FRONTEND_URL: process.env.FRONTEND_URL || 'https://scribe-azure.vercel.app',
-  DISCORD_TOKEN: process.env.DISCORD_TOKEN,
+  DISCORD_TOKEN: process.env.TOKEN || process.env.DISCORD_TOKEN,
   DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
   DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
-  DISCORD_OAUTH_REDIRECT_URI: process.env.DISCORD_OAUTH_REDIRECT_URI,
+  DISCORD_OAUTH_REDIRECT_URI: process.env.DISCORD_OAUTH_REDIRECT_URI || 'https://scribe-1r8k.onrender.com/auth/callback',
   ADMIN_IDS: (process.env.ADMIN_IDS || '').split(',').map(id => id.trim()),
 };

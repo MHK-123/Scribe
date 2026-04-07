@@ -187,39 +187,28 @@ class PomodoroManager:
                     bot_logger.error(f"Failed to restore session {row['id']}: {e}")
 
     async def on_member_join_vc(self, member: discord.Member, channel: discord.VoiceChannel):
-        """Resilient entry point for auto-ignition."""
+        """Surgical entry point: Only ignites sessions for explicitly configured Focus VCs."""
         key = (member.guild.id, channel.id)
         
-        # 1. Check existing session
+        # 1. Existing Session Check: Silent Addition
         if key in self.sessions:
             session = self.sessions[key]
-            session.participants[member.id] = datetime.now(timezone.utc)
-            # FORCE REPOST: Ping the joining member and move the UI to the bottom
-            await self._refresh_message(session, announcement=f"⚔️ **{member.mention}** has joined the focus ritual!", force_repost=True)
+            # Only ping and refresh if the hunter is NEW to the session
+            if member.id not in session.participants:
+                session.participants[member.id] = datetime.now(timezone.utc)
+                await self._refresh_message(session, announcement=f"⚔️ **{member.mention}** has joined the focus ritual!", force_repost=True)
             return
 
-        # 2. Resilient Config Fetch
+        # 2. Config Verification: Exact match only
         async with self.pool.acquire() as conn:
             cfg = await conn.fetchrow(
                 'SELECT * FROM pomodoro_configs WHERE guild_id = $1 AND voice_channel_id = $2',
                 str(member.guild.id), str(channel.id)
             )
             
-            # 3. Fallback to Guild-Global or Default
+            # Removed the "Thundering Ping" fallback (guild_id search without VC match)
             if not cfg:
-                bot_logger.info(f"🔮 [POMODORO]: No custom config for {channel.name}. Seeking guild default...")
-                cfg = await conn.fetchrow('SELECT * FROM pomodoro_configs WHERE guild_id = $1 LIMIT 1', str(member.guild.id))
-                
-            if not cfg:
-                # Absolute Default Case
-                bot_logger.info(f"🔮 [POMODORO]: No guild config found. Manifesting system defaults for {channel.name}.")
-                cfg = {
-                    'focus_duration': 25,
-                    'break_duration': 5,
-                    'auto_start': True,
-                    'auto_stop': True,
-                    'text_channel_id': None # Will be resolved in start_session
-                }
+                return
 
         if not cfg.get('auto_start', True):
             return

@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
+import { discordService } from '../services/discordService.js';
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.get('/login', (req, res) => {
     const finalUrl = url.toString();
     console.log('--- OAuth Login Attempt ---');
     console.log('Redirecting to:', finalUrl.replace(config.DISCORD_CLIENT_ID, 'REDACTED'));
+    console.log('Redirect URI Base:', config.DISCORD_OAUTH_REDIRECT_URI);
     
     // Using manual header for maximum reliability against hidden characters
     res.writeHead(302, { 'Location': finalUrl });
@@ -47,8 +49,11 @@ router.get('/callback', async (req, res) => {
       if (!clientSecret) console.error('  ❌ DISCORD_CLIENT_SECRET is MISSING');
       if (!redirectUri) console.error('  ❌ DISCORD_OAUTH_REDIRECT_URI is MISSING');
       
-      throw new Error('Handshake denied: Identity credentials are VOID.');
+      throw new Error(`Handshake denied: Identity credentials are VOID. Redirect URI set to: ${redirectUri || 'NULL'}`);
     }
+
+    console.log(`📡 [Gateway]: Handshake code received: ${code.substring(0, 5)}...`);
+
 
     const params = new URLSearchParams({
       client_id: clientId,
