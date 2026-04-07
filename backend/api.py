@@ -140,35 +140,49 @@ async def get_admin_stats():
 
 @router.get("/guilds")
 async def get_guilds(request: Request):
-    """Manifests the Hall of Realms with Dual-Vision resilience."""
+    """Manifests the Hall of Realms with Absolute High-Fidelity Resilience."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
+        print("❌ [AUTH]: No Bearer token found in headers.")
         return []
 
     token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         access_token = payload.get("access_token")
-    except Exception:
+    except Exception as e:
+        print(f"❌ [JWT]: Verification failed: {e}")
         return []
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    if not access_token:
+        print("❌ [ACCESS TOKEN]: Missing in JWT payload.")
+        return []
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
         # 1. Vision: Fetch User's Discord Realm List
-        user_guilds_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
-            "Authorization": f"Bearer {access_token}"
-        })
-        
-        if user_guilds_res.status_code != 200:
-            print(f"❌ [DISCORD FETCH FAIL]: {user_guilds_res.status_code}")
+        try:
+            u_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
+                "Authorization": f"Bearer {access_token}"
+            })
+            if u_res.status_code != 200:
+                print(f"❌ [DISCORD USER]: {u_res.status_code} - {u_res.text}")
+                return []
+            user_guilds = u_res.json()
+        except Exception as e:
+            print(f"❌ [DISCORD USER REQ]: {e}")
             return []
 
-        user_guilds = user_guilds_res.json()
-
-        # 2. Vision: Fetch Bot's Installed Realms
-        bot_guilds_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
-            "Authorization": f"Bot {DISCORD_TOKEN}"
-        })
-        bot_guild_ids = [g["id"] for g in bot_guilds_res.json()] if bot_guilds_res.status_code == 200 else []
+        # 2. Vision: Fetch Bot's Installed Realms (Background)
+        bot_guild_ids = []
+        if DISCORD_TOKEN:
+            try:
+                b_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
+                    "Authorization": f"Bot {DISCORD_TOKEN}"
+                })
+                if b_res.status_code == 200:
+                    bot_guild_ids = [str(bg["id"]) for bg in b_res.json()]
+            except Exception:
+                pass # Non-critical failure
 
         # 3. Sanctuary Library: Fetch Manifested Realms (DB)
         db_guild_ids = []
@@ -177,32 +191,37 @@ async def get_guilds(request: Request):
             if pool:
                 async with pool.acquire() as conn:
                     rows = await conn.fetch("SELECT guild_id FROM guild_configs")
-                    db_guild_ids = [row["guild_id"] for row in rows]
-        except Exception as e:
-            print(f"⚠️ [DB SYNC FAIL]: Using Discord vision fallback: {e}")
+                    db_guild_ids = [str(row["guild_id"]) for row in rows]
+        except Exception:
+            pass # Non-critical failure
 
-        # 4. Merge the Visions
-        MANAGE_GUILD = 0x20
-        ADMINISTRATOR = 0x8
-        
-        final_realms = []
+        # 4. Final Manifestation
+        # Permission bits: MANAGE_GUILD (0x20), ADMINISTRATOR (0x08)
+        filtered = []
         for g in user_guilds:
-            perms = int(g["permissions"])
-            if (perms & MANAGE_GUILD) == MANAGE_GUILD or (perms & ADMINISTRATOR) == ADMINISTRATOR:
-                final_realms.append({
-                    "id": g["id"],
-                    "name": g["name"],
-                    "icon": g.get("icon"),
-                    "icon_url": f"https://cdn.discordapp.com/icons/{g['id']}/{g['icon']}.png" if g.get("icon") else None,
-                    "is_installed": g["id"] in bot_guild_ids,
-                    "is_manifested": g["id"] in db_guild_ids # True if in DB
-                })
+            try:
+                perms = int(g.get("permissions", "0"))
+                is_admin = (perms & 0x08) == 0x08 or (perms & 0x20) == 0x20
+                
+                # We show the server if the user is an admin OR if the bot is already there
+                if is_admin or str(g["id"]) in bot_guild_ids:
+                    filtered.append({
+                        "id": str(g["id"]),
+                        "name": g["name"],
+                        "icon": g.get("icon"),
+                        "icon_url": f"https://cdn.discordapp.com/icons/{g['id']}/{g['icon']}.png" if g.get("icon") else None,
+                        "is_installed": str(g["id"]) in bot_guild_ids,
+                        "is_manifested": str(g["id"]) in db_guild_ids
+                    })
+            except Exception:
+                continue
         
-        return final_realms
+        print(f"✅ [MANIFEST COMPLETE]: Returning {len(filtered)} realms.")
+        return filtered
 
 @router.get("/admin/guilds")
 async def get_admin_guilds(request: Request):
-    """Echo Portal: Uses the same Dual-Vision for admin routes."""
+    """Echo Portal: Unified for maximum vision."""
     return await get_guilds(request)
 
 @router.get("/auth/callback")
