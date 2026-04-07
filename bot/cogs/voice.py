@@ -250,16 +250,6 @@ class VoiceSetup(commands.Cog):
                             str(new_vc.id), guild_id, str(member.id)
                         )
                         
-                        # ── Dynamic Pomodoro Config Clone ──
-                        pomo_cfg = await conn.fetchrow('SELECT * FROM pomodoro_configs WHERE guild_id = $1 LIMIT 1', guild_id)
-                        if pomo_cfg:
-                            await conn.execute('''
-                                INSERT INTO pomodoro_configs 
-                                (guild_id, voice_channel_id, text_channel_id, focus_duration, break_duration, cycles, auto_start, auto_stop)
-                                VALUES ($1, $2, $3, $4, $5, 0, True, True)
-                                ON CONFLICT DO NOTHING
-                            ''', guild_id, str(new_vc.id), pomo_cfg['text_channel_id'], pomo_cfg['focus_duration'], pomo_cfg['break_duration'])
-
                         await safe_emit('vc_created', {
                             'guildId': guild_id,
                             'channelId': str(new_vc.id),

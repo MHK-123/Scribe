@@ -206,12 +206,8 @@ class PomodoroManager:
                 str(member.guild.id), str(channel.id)
             )
             
-            # Removed the "Thundering Ping" fallback (guild_id search without VC match)
-            if not cfg:
+            if not cfg or not cfg.get('auto_start', True):
                 return
-
-        if not cfg.get('auto_start', True):
-            return
 
         await self.start_session(member.guild, channel, cfg)
 
