@@ -154,69 +154,66 @@ async def get_guilds(request: Request):
         print(f"❌ [JWT]: Verification failed: {e}")
         return []
 
-    if not access_token:
-        print("❌ [ACCESS TOKEN]: Missing in JWT payload.")
-        return []
-
     async with httpx.AsyncClient(timeout=15.0) as client:
-        # 1. Vision: Fetch User's Discord Realm List
+        # 1. Vision: Fetch User's Discord Realm List (PRIMARY)
         try:
             u_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
                 "Authorization": f"Bearer {access_token}"
             })
             if u_res.status_code != 200:
-                print(f"❌ [DISCORD USER]: {u_res.status_code} - {u_res.text}")
+                print(f"⚠️ [API]: Discord User Manifest failed ({u_res.status_code})")
                 return []
             user_guilds = u_res.json()
-        except Exception as e:
-            print(f"❌ [DISCORD USER REQ]: {e}")
+        except Exception:
             return []
 
-        # 2. Vision: Fetch Bot's Installed Realms (Background)
-        bot_guild_ids = []
+        # 2. Vision: Fetch Bot's Installed Realms (ASYNCHRONOUSLY)
+        bot_guild_ids = set()
         if DISCORD_TOKEN:
             try:
                 b_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
                     "Authorization": f"Bot {DISCORD_TOKEN}"
-                })
+                }, timeout=5.0) # Absolute cap for bot vision
                 if b_res.status_code == 200:
-                    bot_guild_ids = [str(bg["id"]) for bg in b_res.json()]
+                    bot_guild_ids = {str(bg["id"]) for bg in b_res.json()}
             except Exception:
-                pass # Non-critical failure
+                pass
 
         # 3. Sanctuary Library: Fetch Manifested Realms (DB)
-        db_guild_ids = []
+        db_guild_ids = set()
         try:
+            # Shield: Only query if pool is ignited
             pool = await get_db_pool()
             if pool:
                 async with pool.acquire() as conn:
-                    rows = await conn.fetch("SELECT guild_id FROM guild_configs")
-                    db_guild_ids = [str(row["guild_id"]) for row in rows]
+                    # Anchor: Only query what we need to speed up manifestation
+                    rows = await conn.fetch("SELECT guild_id FROM guild_configs LIMIT 500")
+                    db_guild_ids = {str(row["guild_id"]) for row in rows}
         except Exception:
-            pass # Non-critical failure
+            pass
 
-        # 4. Final Manifestation
+        # 4. Final Merging Manifest
         # Permission bits: MANAGE_GUILD (0x20), ADMINISTRATOR (0x08)
         filtered = []
         for g in user_guilds:
             try:
                 perms = int(g.get("permissions", "0"))
-                is_admin = (perms & 0x08) == 0x08 or (perms & 0x20) == 0x20
+                gid = str(g["id"])
                 
-                # We show the server if the user is an admin OR if the bot is already there
-                if is_admin or str(g["id"]) in bot_guild_ids:
+                # Show server if user is Admin OR if bot is already there
+                if (perms & 0x08) == 0x08 or (perms & 0x20) == 0x20 or gid in bot_guild_ids:
                     filtered.append({
-                        "id": str(g["id"]),
+                        "id": gid,
                         "name": g["name"],
                         "icon": g.get("icon"),
-                        "icon_url": f"https://cdn.discordapp.com/icons/{g['id']}/{g['icon']}.png" if g.get("icon") else None,
-                        "is_installed": str(g["id"]) in bot_guild_ids,
-                        "is_manifested": str(g["id"]) in db_guild_ids
+                        "icon_url": f"https://cdn.discordapp.com/icons/{gid}/{g['icon']}.png" if g.get("icon") else None,
+                        "is_installed": gid in bot_guild_ids,
+                        "is_manifested": gid in db_guild_ids
                     })
             except Exception:
                 continue
         
-        print(f"✅ [MANIFEST COMPLETE]: Returning {len(filtered)} realms.")
+        print(f"✅ [SUPREME MANIFEST]: Returned {len(filtered)} realms instantly.")
         return filtered
 
 @router.get("/admin/guilds")
