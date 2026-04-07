@@ -3,7 +3,20 @@ from fastapi.responses import RedirectResponse
 import httpx
 import os
 import jwt
+import asyncpg
 from datetime import datetime, timedelta
+from typing import List, Optional
+
+# --- Manifest: Vault Configuration ---
+DATABASE_URL = os.getenv("DATABASE_URL")
+db_pool = None
+
+async def get_db_pool():
+    global db_pool
+    if db_pool is None:
+        print("🔮 [DB POOL]: Igniting the Sanctuary Library connection...")
+        db_pool = await asyncpg.create_pool(DATABASE_URL)
+    return db_pool
 
 router = APIRouter()
 
@@ -98,15 +111,56 @@ async def get_guilds(request: Request):
         print(f"✅ [REALM MANIFESTED]: Found {len(filtered)} managed servers.")
         return filtered
 
-@router.get("/admin/guilds")
-async def get_admin_guilds(request: Request):
-    """Echo Portal: Allows /admin/guilds to reach the same vision as /guilds."""
-    return await get_guilds(request)
-
-# --- Mock Admin Routes to bypass Forbidden ---
+# --- Manifested Realm Vision: Admin Stats ---
 @router.get("/admin/stats")
 async def get_admin_stats():
-    return {"total_users": 0, "active_guilds": 0, "status": "Stable"}
+    """Manifests the total scale of the Scribe influence."""
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            # Query the Sanctuary Library for real-time spirit counts
+            # Note: total_users counts distinct spirits in the level manifests
+            total_users = await conn.fetchval("SELECT COUNT(DISTINCT user_id) FROM user_levels")
+            active_guilds = await conn.fetchval("SELECT COUNT(*) FROM guild_configs")
+            active_connections = await conn.fetchval("SELECT COUNT(*) FROM temp_voice_channels")
+            
+            return {
+                "total_users": total_users or 0,
+                "active_guilds": active_guilds or 0,
+                "active_connections": active_connections or 0
+            }
+    except Exception as e:
+        print(f"❌ [DB STATS FAIL]: {e}")
+        return {"total_users": 0, "active_guilds": 0, "active_connections": 0}
+
+@router.get("/admin/guilds")
+async def get_admin_guilds(request: Request):
+    """Manifests the Hall of Sanctuaries from the Sanctuary Library."""
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            # Manifest every realm registered in the Library
+            rows = await conn.fetch("SELECT guild_id, vc_name_template FROM guild_configs")
+            
+            # Enrich with Names (First pass: IDs as identifiers)
+            guilds = []
+            for row in rows:
+                guilds.append({
+                    "id": row["guild_id"],
+                    "name": f"Manifested Realm ({row['guild_id']})",
+                    "active": True,
+                    "is_installed": True
+                })
+            return guilds
+    except Exception as e:
+        print(f"❌ [DB GUILDS FAIL]: {e}")
+        return []
+
+@router.get("/guilds")
+async def get_guilds(request: Request):
+    """Bridge Ritual: Merges Discord vision with the Sanctum Library."""
+    # Note: Calling admin_guilds for now to ensure visibility
+    return await get_admin_guilds(request)
 
 @router.get("/auth/callback")
 async def callback(code: str = None, error: str = None):
