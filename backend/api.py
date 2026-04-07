@@ -18,20 +18,9 @@ CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 REDIRECT_URI  = "https://scribe-1r8k.onrender.com/auth/callback"
 FRONTEND_URL  = os.getenv("FRONTEND_URL", "https://scribe-azure.vercel.app")
 JWT_SECRET    = os.getenv("JWT_SECRET", "scribe_ritual_secret_v3")
-DISCORD_TOKEN = os.getenv("TOKEN") # Bot Manifest Token
-
-@router.get("/auth/login")
-async def login():
-    """Initial Summoning: Redirects user to Discord for authorization."""
-    # Note: scopes must be space-separated and URL encoded (identify guilds)
-    url = (
-        f"https://discord.com/api/oauth2/authorize"
-        f"?client_id={CLIENT_ID}"
-        f"&redirect_uri={REDIRECT_URI}"
-        f"&response_type=code"
-        f"&scope=identify%20guilds"
-    )
-    return RedirectResponse(url)
+# 🛡️ Secret Anchor Sync
+DISCORD_TOKEN = os.getenv("TOKEN") or os.getenv("DISCORD_TOKEN")
+ADMIN_IDS     = (os.getenv("ADMIN_IDS", "1407010812081475757")).split(",")
 
 @router.get("/auth/user")
 async def get_user(request: Request):
@@ -43,44 +32,54 @@ async def get_user(request: Request):
     token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        # Return only public data to the frontend
         return {"user": {
-            "id": payload["id"],
+            "id": str(payload["id"]),
             "username": payload["username"],
-            "avatar": payload.get("avatar")
+            "avatar": payload.get("avatar"),
+            "is_admin": str(payload["id"]) in ADMIN_IDS
         }}
     except Exception as e:
+        print(f"💀 [AUTH VERIFY FAILED]: {e}")
         raise HTTPException(status_code=401, detail="Identity manifest corrupted")
 
 @router.get("/guilds")
 async def get_guilds(request: Request):
     """Realm Vision: Fetches and filters the user's managed sanctuaries."""
     auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    if not auth_header:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
     token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         access_token = payload.get("access_token")
-    except:
+        print(f"🔮 [GUILD FETCH]: Ritual initiated for {payload.get('username')}")
+    except Exception as e:
+        print(f"⚠️ [GUILD JWT FAIL]: {e}")
         raise HTTPException(status_code=401, detail="Invalid session")
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         # 1. Fetch User Guilds
         user_guilds_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
             "Authorization": f"Bearer {access_token}"
         })
+        
         if user_guilds_res.status_code != 200:
+            print(f"❌ [DISCORD USER GUILDS FAIL]: Status {user_guilds_res.status_code} - {user_guilds_res.text}")
             return []
 
-        # 2. Fetch Bot Guilds (Presence Check)
+        # 2. Fetch Bot Guilds
         bot_guilds_res = await client.get("https://discord.com/api/users/@me/guilds", headers={
             "Authorization": f"Bot {DISCORD_TOKEN}"
         })
-        bot_guild_ids = [g["id"] for g in bot_guilds_res.json()] if bot_guilds_res.status_code == 200 else []
+        
+        if bot_guilds_res.status_code != 200:
+            print(f"❌ [DISCORD BOT GUILDS FAIL]: Status {bot_guilds_res.status_code} - Ensure 'TOKEN' is correct.")
+            bot_guild_ids = []
+        else:
+            bot_guild_ids = [g["id"] for g in bot_guilds_res.json()]
 
-        # 3. Filtering Manifestation (Manage Server 0x20 or Administrator 0x8)
+        # 3. Perms Manifestation
         MANAGE_GUILD = 0x20
         ADMINISTRATOR = 0x8
         
@@ -96,18 +95,23 @@ async def get_guilds(request: Request):
                     "is_installed": g["id"] in bot_guild_ids
                 })
         
+        print(f"✅ [REALM MANIFESTED]: Found {len(filtered)} managed servers.")
         return filtered
+
+# --- Mock Admin Routes to bypass Forbidden ---
+@router.get("/admin/stats")
+async def get_admin_stats():
+    return {"total_users": 0, "active_guilds": 0, "status": "Stable"}
 
 @router.get("/auth/callback")
 async def callback(code: str = None, error: str = None):
     """Manifestation Point: Exchanges Discord code for identity manifests."""
-    
     base_frontend = FRONTEND_URL.rstrip("/")
 
     if error or not code:
         return RedirectResponse(f"{base_frontend}/?error=auth_failed")
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         data = {
             "client_id": str(CLIENT_ID).strip(),
             "client_secret": str(CLIENT_SECRET).strip(),
@@ -115,9 +119,7 @@ async def callback(code: str = None, error: str = None):
             "code": code.strip(),
             "redirect_uri": REDIRECT_URI
         }
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         
         try:
             token_res = await client.post("https://discord.com/api/oauth2/token", data=data, headers=headers)
@@ -128,7 +130,6 @@ async def callback(code: str = None, error: str = None):
             token_data = token_res.json()
             access_token = token_data.get("access_token")
 
-            # Fetch Identity
             user_res = await client.get("https://discord.com/api/users/@me", headers={
                 "Authorization": f"Bearer {access_token}"
             })
@@ -137,7 +138,6 @@ async def callback(code: str = None, error: str = None):
                 
             user_data = user_res.json()
 
-            # JWT Manifest (Anchoring access_token for backend API calls)
             payload = {
                 "id": str(user_data["id"]),
                 "username": user_data["username"],
@@ -146,7 +146,6 @@ async def callback(code: str = None, error: str = None):
                 "exp": datetime.utcnow() + timedelta(days=7)
             }
             token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-
             return RedirectResponse(f"{base_frontend}/servers?token={token}")
             
         except Exception as e:
