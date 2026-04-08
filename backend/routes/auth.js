@@ -75,7 +75,7 @@ router.get('/callback', async (req, res) => {
         id: userData.id, 
         username: userData.username, 
         avatar: userData.avatar,
-        discord_access_token: access_token
+        access_token: access_token
       }, 
       config.JWT_SECRET, 
       { expiresIn: '7d' }

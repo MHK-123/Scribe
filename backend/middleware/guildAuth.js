@@ -21,7 +21,7 @@ export const authorizeGuild = async (req, res, next) => {
 
   try {
     // 2. Fetch User Guilds via DiscordService (Handles Caching + 429s)
-    const userGuilds = await discordService.getUserGuilds(userId, req.user.discord_access_token);
+    const userGuilds = await discordService.getUserGuilds(userId, req.user.access_token);
     
     // 3. Member Proof
     const targetGuild = userGuilds.find(g => g.id === guildId);

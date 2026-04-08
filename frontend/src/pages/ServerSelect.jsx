@@ -24,13 +24,15 @@ export default function ServerSelect() {
 
     try {
       const res = await api.get(`/guilds${force ? '?force=true' : ''}`);
-      setGuilds(res.data);
+      setGuilds(Array.isArray(res.data) ? res.data : []);
       setError(null);
     } catch (err) {
-      console.error(err);
+      console.error('🔮 [SENTINEL]: Realm sync failed:', err);
       if (err.response?.status === 401) logout();
+      
+      const errorMsg = err.response?.data?.error || err.message || "Connection to sanctuary lost.";
       if (err.response?.status !== 429) {
-        setError(err.response?.data?.error || "Connection to sanctuary lost.");
+        setError(errorMsg);
       }
     } finally {
       setLoading(false);

@@ -1,55 +1,66 @@
-# Scribe (v3.0)
-### A Productivity and Study Discord Bot
+# <img src="PFP.png" align="right" width="120" /> Scribe (v6.0)
+### The Absolute High-Fidelity Study & Productivity Sentinel
 
-[![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge&logo=discord&logoColor=white)](https://github.com/MHK-123/Scribe)
-[![System](https://img.shields.io/badge/Engine-Scribe_v3.0-blue?style=for-the-badge)](https://github.com/MHK-123/Scribe)
+[![Status](https://img.shields.io/badge/Status-Operational-success?style=for-the-badge&logo=discord&logoColor=white)](https://scribe-azure.vercel.app)
+[![Engine](https://img.shields.io/badge/Engine-Unified_API-blue?style=for-the-badge)](https://scribe-1r8k.onrender.com)
 [![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)](LICENSE)
 
-**Scribe** is a full-stack Discord bot designed to improve study sessions and server productivity. Built with a modern, sleek aesthetic, it integrates a **Discord Bot**, a **Node.js Backend**, and an **Interactive Web Dashboard**.
+**Scribe** is a premium, full-stack Discord ecosystem designed to transform productivity into a gamified experience. It integrates a resilient **Python Bot**, a high-performance **Unified API (Node.js/FastAPI)**, and a stunning **Web Dashboard**.
 
 ---
 
-## LINKS
-- **Landing Page**: [https://scribe-azure.vercel.app/](https://scribe-azure.vercel.app/)
-- **Dashboard**: [https://scribe-azure.vercel.app/servers](https://scribe-azure.vercel.app/servers)
-- **Support Server**: [https://discord.gg/qdP5WemFfd](https://discord.gg/qdP5WemFfd)
+## 🔗 Manifested Links
+- **Portal**: [Scribe Web](https://scribe-azure.vercel.app/)
+- **Sanctuary Select**: [Realm Dashboard](https://scribe-azure.vercel.app/servers)
+- **Support Sanctuary**: [Discord Support](https://discord.gg/qdP5WemFfd)
 
 ---
 
-## FEATURES
-Scribe automates your productivity tracking with the following features:
-- **Pomodoro Timer**: Joining a configured Voice Channel instantly creates a real-time Pomodoro timer interface, tracking your focus and break durations.
-- **Continuous Mode**: Support for "Infinite Focus" (0 cycles) for 24/7 study rooms.
-- **Command Security**: Restrict bot commands to specific channels, managed entirely from your web dashboard.
-- **Leveling System**: Earn XP for every second spent in a focus session. Level up and unlock Discord roles automatically.
+## 🔥 Prime Features
+*   **Pomodoro Ignition**: Voice-channel triggered focus sessions with real-time web-sync.
+*   **XP Manifestation**: Advanced leveling system with automatic role synchronization.
+*   **Sentinel Security**: Granular command-channel locking and admin control.
+*   **Leaderboard Vision**: Interactive, multi-interval study rankings.
 
 ---
 
-## TECH STACK
-- **Frontend**: React + Vite + Tailwind CSS.
-- **Backend**: Node.js + Express + asyncpg.
-- **Database**: PostgreSQL.
-- **Bot**: Python (Discord.py).
+## 🛠️ The Tech Forge
+### Backend (The Core)
+- **Node.js**: Primary API & Socket.io Sentinel.
+- **FastAPI**: Specialized Bot vision & High-Fidelity analytics.
+- **PostgreSQL**: The permanent Sanctuary Library (Database).
+
+### Frontend (The Interface)
+- **React + Vite**: Ultra-fast UI response.
+- **Tailwind CSS**: Modern, deep-space aesthetic.
+- **Framer Motion**: Fluid, organic micro-animations.
+
+### Bot (The Presence)
+- **discord.py**: Resilient connection to the Discord gateway.
 
 ---
 
-## DASHBOARD PREVIEW
-- **Overview**: View real-time study statistics and XP progression cards.
-- **Server Settings**: Configure roles, timezones, and milestones through the dashboard control panel.
-- **Leaderboards**: View competitive rankings featuring interactive Discord mentions.
+## 📁 Repository Structure
+To maintain a minimal and high-fidelity project space, we've organized the repository:
+- `backend/`: The Unified API layers (Node.js/FastAPI).
+- `bot/`: The Python manifest for the Discord sentinel.
+- `frontend/`: The React-based user interface.
+- `docs/`: Technical guides and command manuals.
+- `scripts/`: Diagnostic and maintenance rituals.
 
 ---
 
-## DOCUMENTATION
-- **[Installation Guide](guide.md)**: Technical setup and database schema.
-- **[Commands List](commands.md)**: Full list of slash and prefix commands.
-- **[Dashboard Guide](dashboard_guide.md)**: Detailed feature walkthrough for administrators.
+## 🚀 Ignition Commands
+For a full list of rituals, see [Commands Manifest](docs/commands.md).
+- `/pomodoro start`: Ignites a focus cycle.
+- `/level`: Manifests your current progress.
+- `/rank`: Displays the global leaderboard.
 
 ---
 
-## LEGAL
-- **[Terms of Service](frontend/src/pages/Terms.jsx)**
-- **[Privacy Policy](frontend/src/pages/Privacy.jsx)**
+## ⚖️ Legal & Privacy
+- [Terms of Service](frontend/src/pages/Terms.jsx)
+- [Privacy Policy](frontend/src/pages/Privacy.jsx)
 
-Copyright 2026 MHK-123. All rights reserved. 
-Unauthorized copying, modification, or distribution is prohibited under the terms of the [LICENSE](LICENSE).
+© 2026 MHK-123. All rights reserved. 
+Unauthorized manifestation, modification, or distribution is governed by the [LICENSE](LICENSE).

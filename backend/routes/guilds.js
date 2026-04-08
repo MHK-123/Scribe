@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
     console.log(`🔮 [SENTINEL]: Realm fetch initiated for user ${userId}`);
     
     // 1. Fetch User Guilds (Service handles Redis + 429s)
-    const userGuilds = await discordService.getUserGuilds(userId, req.user.discord_access_token);
+    const userGuilds = await discordService.getUserGuilds(userId, req.user.access_token);
 
     // 2. Refresh Bot Vision (Async)
     const botIds = await discordService.getBotGuilds();
@@ -61,7 +61,7 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
   try {
-    const userGuilds = await discordService.getUserGuilds(userId, req.user.discord_access_token);
+    const userGuilds = await discordService.getUserGuilds(userId, req.user.access_token);
     const guild = userGuilds.find(g => g.id === id);
     if (!guild) return res.status(404).json({ error: 'Guild not found in your managed list' });
 
