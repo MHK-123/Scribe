@@ -37,6 +37,8 @@ router.get('/', async (req, res) => {
       botIds = botGuilds.map(bg => bg.id);
     } catch (e) {
       console.warn('⚠️ [SENTINEL]: Bot vision failed to manifest. Proceeding with user-only view.');
+    }
+
     // 3. Merge Logic: Only show servers where user has Manage Guild or Admin
     const result = userGuilds
       .filter(g => {
