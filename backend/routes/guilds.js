@@ -258,17 +258,36 @@ router.get('/:id/leaderboard', async (req, res) => {
 router.get('/:id/weekly-hours', async (req, res) => {
   try {
     const result = await query(
-      `SELECT DATE(join_time) AS day, COALESCE(SUM(duration), 0) AS total_seconds
+      `SELECT TO_CHAR(join_time, 'YYYY-MM-DD') AS day_str, COALESCE(SUM(duration), 0) AS total_seconds
        FROM study_sessions
-       WHERE guild_id = $1 AND join_time >= NOW() - INTERVAL '7 days'
-       GROUP BY day ORDER BY day ASC`,
+       WHERE guild_id = $1 AND join_time >= CURRENT_DATE - INTERVAL '6 days'
+       GROUP BY day_str ORDER BY day_str ASC`,
       [req.params.id]
     );
-    res.json(result.rows.map(row => ({
-      name:  new Date(row.day).toLocaleDateString('en-US', { weekday: 'short' }),
-      hours: parseFloat((row.total_seconds / 3600).toFixed(2)),
-    })));
+
+    const dayMap = new Map();
+    result.rows.forEach(row => {
+      dayMap.set(row.day_str, parseFloat((row.total_seconds / 3600).toFixed(2)));
+    });
+
+    const chartData = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const key = `${year}-${month}-${day}`;
+      
+      chartData.push({
+        name: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        hours: dayMap.get(key) || 0
+      });
+    }
+
+    res.json(chartData);
   } catch (err) {
+    console.error('Failed to fetch weekly data:', err);
     res.status(500).json({ error: 'Failed to fetch weekly data' });
   }
 });
