@@ -68,6 +68,11 @@ const DashboardLayout = () => {
   const guildId  = location.pathname.split('/')[2];
   const [currentGuild, setCurrentGuild] = React.useState(null);
 
+  // Auto-redirect if somehow navigating to an undefined guild
+  if (guildId === 'undefined') {
+    return <Navigate to="/servers" replace />;
+  }
+
   React.useEffect(() => {
     if (!guildId || !token) return;
     axios.get(`${apiUrl}/guilds/${guildId}`, {
@@ -103,7 +108,7 @@ const DashboardLayout = () => {
       {/* Top Header */}
       <header className="sticky top-0 z-50 h-16 flex items-center justify-between px-6 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
         <Link to="/servers" className="no-underline">
-          <DungeonLogo title={currentGuild?.name} />
+          <DungeonLogo title={currentGuild?.name || (location.pathname === '/admin' ? 'CORE SANCTUM' : 'SCRIBE')} />
         </Link>
 
         <div className="flex items-center gap-4">
@@ -128,7 +133,8 @@ const DashboardLayout = () => {
         {/* Navigation Sidebar */}
         <aside className="w-64 flex-shrink-0 flex flex-col gap-1 p-2 rounded-2xl bg-white/[0.03] border border-white/5 backdrop-blur-sm self-start sticky top-24 shadow-2xl">
           <div className="px-4 py-2 mb-2 text-[10px] font-bold tracking-[0.3em] text-slate-500 uppercase opacity-60">Control Nodes</div>
-          {navItems.map(item => {
+          
+          {guildId && navItems.map(item => {
             const isActive = location.pathname === item.path;
             return (
               <Link
@@ -151,6 +157,11 @@ const DashboardLayout = () => {
             );
           })}
 
+          {!guildId && location.pathname === '/admin' && (
+            <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+              <ShieldAlert size={14} /> Core Admin Mode
+            </div>
+          )}
 
           <div className="flex-1 min-h-[40px]" />
           <div className="h-px bg-white/5 my-4 mx-2" />
