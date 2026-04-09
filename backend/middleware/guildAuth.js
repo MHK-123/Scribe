@@ -6,7 +6,7 @@ import { discordService } from '../services/discordService.js';
  * Now powered by DiscordService (with 429 backoff & Redis caching).
  */
 export const authorizeGuild = async (req, res, next) => {
-  const guildId = req.params.id || req.params.guildId;
+  const guildId = req.params.guildId || req.params.id;
   const userId  = req.user?.id;
 
   if (!guildId) {
