@@ -13,7 +13,7 @@ import { initScheduler } from './scheduler.js';
 import { config } from './config.js';
 
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 
 const app = express();
 const server = http.createServer(app);
@@ -36,7 +36,7 @@ app.use(globalIpLimiter);
 const userApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
-  keyGenerator: (req) => req.user?.id || req.ip, // Fallback to IP if unauth
+  keyGenerator: (req, res) => req.user?.id || ipKeyGenerator(req, res), // Replaced req.ip with secure helper
   message: { error: 'Hunter activity limit reached. Calibrate your requests.' }
 });
 // Applied to actual resource routes
