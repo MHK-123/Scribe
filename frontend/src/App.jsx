@@ -68,13 +68,8 @@ const DashboardLayout = () => {
   const guildId  = location.pathname.split('/')[2];
   const [currentGuild, setCurrentGuild] = React.useState(null);
 
-  // Auto-redirect if somehow navigating to an undefined guild
-  if (guildId === 'undefined') {
-    return <Navigate to="/servers" replace />;
-  }
-
   React.useEffect(() => {
-    if (!guildId || !token) return;
+    if (!guildId || !token || guildId === 'undefined') return;
     axios.get(`${apiUrl}/guilds/${guildId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -84,6 +79,12 @@ const DashboardLayout = () => {
       setCurrentGuild(null);
     });
   }, [guildId, apiUrl, token]);
+
+  // Auto-redirect if somehow navigating to an undefined guild
+  // Must happen after hooks to obey React Rules of Hooks
+  if (guildId === 'undefined') {
+    return <Navigate to="/servers" replace />;
+  }
 
   const navItems = [
     { name: 'Overview',    path: `/dashboard/${guildId}`,             icon: <Activity size={18}/> },
