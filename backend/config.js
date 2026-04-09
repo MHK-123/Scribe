@@ -22,7 +22,5 @@ export const config = {
 if (!config.DISCORD_TOKEN) {
   console.error('❌ [CRITICAL]: DISCORD_TOKEN is missing! Bot vision will be blind.');
 } else if (config.DISCORD_TOKEN.length < 50) {
-  console.warn('⚠️ [WARNING]: DISCORD_TOKEN look unusually short. Verify it is a Bot Token, not a Client Secret.');
+  console.warn('⚠️ [WARNING]: DISCORD_TOKEN looks unusually short. Verify it is a Bot Token, not a Client Secret.');
 }
-
-export default config;
