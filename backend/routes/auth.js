@@ -95,10 +95,20 @@ router.get('/callback', async (req, res) => {
       status: err.response?.status,
       data: err.response?.data
     });
-    
-    res.writeHead(302, { 'Location': `${config.FRONTEND_URL}/?error=${errorType}` });
+    const msg = encodeURIComponent(err.response?.data?.error_description || err.response?.data?.error || err.message || 'unknown');
+    res.writeHead(302, { 'Location': `${config.FRONTEND_URL}/?error=${errorType}&msg=${msg}` });
     res.end();
   }
+});
+
+router.get('/diag', (req, res) => {
+  res.json({
+    CLIENT_ID: !!config.DISCORD_CLIENT_ID,
+    CLIENT_SECRET: !!config.DISCORD_CLIENT_SECRET,
+    REDIRECT_URI: config.DISCORD_OAUTH_REDIRECT_URI,
+    FRONTEND_URL: config.FRONTEND_URL,
+    TOKEN: !!config.DISCORD_TOKEN
+  });
 });
 
 router.get('/user', async (req, res) => {
