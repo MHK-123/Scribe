@@ -30,9 +30,14 @@ router.get('/', async (req, res) => {
     // 1. Fetch User Guilds (Service handles Redis + 429s)
     const userGuilds = await discordService.getUserGuilds(userId, req.user.access_token);
 
-    // 2. Refresh Bot Vision (Async)
-    const botGuilds = await discordService.getBotGuilds();
-    const botIds = botGuilds.map(bg => bg.id);
+    // 2. Refresh Bot Vision (Fail-Safe)
+    let botIds = [];
+    try {
+      const botGuilds = await discordService.getBotGuilds();
+      botIds = botGuilds.map(bg => bg.id);
+    } catch (e) {
+      console.warn('⚠️ [SENTINEL]: Bot vision failed to manifest. Proceeding with user-only view.');
+    }
 
     // 3. Merge Logic: Only show servers where user has Manage Guild or Admin
     const result = userGuilds
