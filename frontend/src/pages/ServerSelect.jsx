@@ -17,9 +17,7 @@ export default function ServerSelect() {
   const [error, setError] = useState(null);
 
   const fetchGuilds = async (force = false) => {
-    // Prevent double-triggering for the same mode
     if (force && refreshing) return;
-    if (!force && loading) return;
     
     if (force) setRefreshing(true);
     else setLoading(true);
