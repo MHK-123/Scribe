@@ -31,17 +31,21 @@ router.get('/', async (req, res) => {
     const userGuilds = await discordService.getUserGuilds(userId, req.user.access_token);
 
     // 2. Refresh Bot Vision (Async)
-    const botIds = await discordService.getBotGuilds();
+    const botGuilds = await discordService.getBotGuilds();
+    const botIds = botGuilds.map(bg => bg.id);
 
-    const MANAGE_GUILD = 0x20n;
-    const ADMINISTRATOR = 0x8n;
-    
+    // 3. Merge Logic: Only show servers where user has Manage Guild or Admin
     const result = userGuilds
       .filter(g => {
         const userPerms = BigInt(g.permissions);
+        const MANAGE_GUILD = 0x20n;
+        const ADMINISTRATOR = 0x8n;
+        
         const hasManage = (userPerms & MANAGE_GUILD) === MANAGE_GUILD;
         const hasAdmin = (userPerms & ADMINISTRATOR) === ADMINISTRATOR;
-        return hasManage || hasAdmin;
+        const isOwner = g.owner === true;
+        
+        return hasManage || hasAdmin || isOwner;
       })
       .map(g => ({
         ...g,

@@ -17,3 +17,12 @@ export const config = {
   DISCORD_OAUTH_REDIRECT_URI: process.env.DISCORD_OAUTH_REDIRECT_URI || 'https://scribe-1r8k.onrender.com/auth/callback',
   ADMIN_IDS: (process.env.ADMIN_IDS || '').split(',').map(id => id.trim()),
 };
+
+// ─── Pre-flight Sentinel ─────────────────────────────────────────────────────
+if (!config.DISCORD_TOKEN) {
+  console.error('❌ [CRITICAL]: DISCORD_TOKEN is missing! Bot vision will be blind.');
+} else if (config.DISCORD_TOKEN.length < 50) {
+  console.warn('⚠️ [WARNING]: DISCORD_TOKEN look unusually short. Verify it is a Bot Token, not a Client Secret.');
+}
+
+export default config;

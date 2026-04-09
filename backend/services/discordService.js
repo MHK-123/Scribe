@@ -85,9 +85,11 @@ export const discordService = {
           headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
         });
         
+        console.log(`✅ [DiscordService]: Bot presence detected in ${data.length} realms.`);
+        
         // Store full metadata for Admin and Select manifests
         const guilds = data.map(g => ({
-          id: g.id,
+          id: String(g.id), // Guarantee String ID for comparison stability
           name: g.name,
           icon: g.icon,
           memberCount: g.approximate_member_count || 0
@@ -95,10 +97,14 @@ export const discordService = {
 
         await botCache.setBotPresence(guilds);
         return guilds;
+      } catch (err) {
+        console.error('❌ [DiscordService]: Bot vision refresh failed!', err.response?.data || err.message);
+        throw err;
       } finally {
         activeRequests.delete(cacheKey);
       }
     })();
+
 
     activeRequests.set(cacheKey, requestPromise);
     return requestPromise;
