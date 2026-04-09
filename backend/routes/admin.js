@@ -34,25 +34,41 @@ router.get('/stats', async (req, res) => {
 // GET /admin/guilds - List all guilds with live status + member counts (cached)
 router.get('/guilds', async (req, res) => {
   try {
-    // 1. Fetch metadata from DB
     const dbGuilds = await query('SELECT * FROM guild_configs');
     const configsMap = {};
     dbGuilds.rows.forEach(row => {
       configsMap[row.guild_id] = row;
     });
 
-    // 2. Fetch full guild details from Bot Vision
-    const botGuilds = await discordService.getBotGuilds();
-    
-    const merged = botGuilds.map(guild => ({
-      id: guild.id,
-      name: guild.name || 'Unknown Realm',
-      icon: guild.icon,
-      memberCount: guild.memberCount || 0,
-      config: configsMap[guild.id] || null
-    }));
+    // Fail-safe: bot vision may fail if token is missing
+    let botGuilds = [];
+    try {
+      botGuilds = await discordService.getBotGuilds();
+    } catch (e) {
+      console.warn('⚠️ [ADMIN]: Bot vision unavailable. Serving DB-only manifest.');
+    }
 
-    res.json(merged);
+    // If bot has guilds, use them. Otherwise fall back to DB configs.
+    if (botGuilds.length > 0) {
+      const merged = botGuilds.map(guild => ({
+        id: guild.id,
+        name: guild.name || 'Unknown Realm',
+        icon: guild.icon,
+        memberCount: guild.memberCount || 0,
+        config: configsMap[guild.id] || null
+      }));
+      return res.json(merged);
+    }
+
+    // Fallback: return DB-configured guilds with basic info
+    const fallback = dbGuilds.rows.map(row => ({
+      id: row.guild_id,
+      name: `Guild ${row.guild_id}`,
+      icon: null,
+      memberCount: 0,
+      config: row
+    }));
+    res.json(fallback);
   } catch (err) {
     console.error('Admin Scrying Failed:', err.message);
     res.status(500).json({ error: 'Scrying failed.' });

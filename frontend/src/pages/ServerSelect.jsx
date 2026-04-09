@@ -17,7 +17,9 @@ export default function ServerSelect() {
   const [error, setError] = useState(null);
 
   const fetchGuilds = async (force = false) => {
-    if (loading || refreshing) return; // Prevent double-triggering
+    // Prevent double-triggering for the same mode
+    if (force && refreshing) return;
+    if (!force && loading) return;
     
     if (force) setRefreshing(true);
     else setLoading(true);
@@ -85,7 +87,7 @@ export default function ServerSelect() {
          
          <div className="flex items-center gap-6">
             {/* Admin Sanctum Link */}
-            {user?.id === '1407010812081475757' && (
+            {String(user?.id).trim() === '1407010812081475757' && (
                <Link to="/admin" className="no-underline">
                  <DungeonButton 
                    variant="danger" 
