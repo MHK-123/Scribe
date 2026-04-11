@@ -156,37 +156,40 @@ export default function ServerSelect() {
                        transition={{ delay: index * 0.05, duration: 0.5 }}
                        className="group"
                     >
-                        <MagicPanel 
-                           className="h-full p-8 flex flex-col border-white/5 transition-transform duration-500 group-hover:-translate-y-2"
-                           glowColor={guild.is_installed ? "rgba(59,130,246,0.05)" : "rgba(100,116,139,0.02)"}
-                        >
-                           {/* Presence Stat */}
-                           <div className="absolute top-6 right-6">
-                             {guild.is_installed
-                               ? <span className="flex items-center gap-2 text-[10px] font-black text-blue-500 tracking-widest uppercase italic">
-                                   <Zap size={10} className="animate-pulse" /> Manifested
-                                 </span>
-                               : <span className="text-[10px] font-black text-slate-700 tracking-widest uppercase italic">Untethered</span>
-                             }
-                           </div>
+                         <MagicPanel 
+                            className="h-full p-8 flex flex-col border-white/5 transition-transform duration-500 group-hover:-translate-y-2 overflow-hidden"
+                            glowColor={guild.is_installed ? "rgba(59,130,246,0.05)" : "rgba(100,116,139,0.02)"}
+                         >
+                            <div className="flex items-center justify-between gap-4 mb-8 w-full">
+                               <div className="flex items-center gap-4 min-w-0 flex-1">
+                                  <div className="relative shrink-0">
+                                     {guild.icon_url
+                                       ? <img src={guild.icon_url} alt={guild.name} className="w-14 h-14 rounded-2xl border border-white/10 shadow-2xl group-hover:border-blue-500/40 transition-colors" />
+                                       : <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/10 flex items-center justify-center text-xl font-black text-blue-500 group-hover:border-blue-500/40 transition-colors uppercase italic shadow-inner">{guild.name?.charAt(0) || '?'}</div>
+                                     }
+                                     {guild.is_installed && (
+                                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 rounded-lg flex items-center justify-center border border-black shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+                                           <Shield size={10} className="text-white fill-white" />
+                                        </div>
+                                     )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                     <h2 className="font-black text-lg text-white tracking-tight leading-tight truncate group-hover:text-blue-400 transition-colors italic uppercase">
+                                        {guild.name}
+                                     </h2>
+                                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] italic truncate">Access Verified</p>
+                                  </div>
+                               </div>
 
-                           <div className="flex items-center gap-6 mb-8">
-                              <div className="relative">
-                                 {guild.icon_url
-                                   ? <img src={guild.icon_url} alt={guild.name} className="w-16 h-16 rounded-2xl border border-white/10 shadow-2xl group-hover:border-blue-500/40 transition-colors" />
-                                   : <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/10 flex items-center justify-center text-2xl font-black text-blue-500 group-hover:border-blue-500/40 transition-colors uppercase italic shadow-inner">{guild.name.charAt(0)}</div>
-                                 }
-                                 {guild.is_installed && (
-                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center border border-black shadow-[0_0_10px_rgba(59,130,246,0.5)]">
-                                       <Shield size={12} className="text-white fill-white" />
-                                    </div>
-                                 )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                 <h2 className="font-black text-xl text-white tracking-tight leading-tight truncate group-hover:text-blue-400 transition-colors italic uppercase">{guild.name}</h2>
-                                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] italic">Access Verified</p>
-                              </div>
-                           </div>
+                               <div className="shrink-0 text-right">
+                                  {guild.is_installed
+                                    ? <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-500 tracking-widest uppercase italic whitespace-nowrap">
+                                        <Zap size={10} className="animate-pulse" /> Manifested
+                                      </span>
+                                    : <span className="text-[9px] font-black text-slate-700 tracking-widest uppercase italic whitespace-nowrap">Untethered</span>
+                                  }
+                               </div>
+                            </div>
 
                            <div className="mt-auto space-y-4">
                               {guild.is_installed ? (

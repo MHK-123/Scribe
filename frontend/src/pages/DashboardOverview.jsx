@@ -91,30 +91,21 @@ export default function DashboardOverview() {
     };
   }, [id, apiUrl, token]);
 
-  if (!stats) return (
-     <div className="space-y-6 animate-pulse p-4">
-        <div className="h-8 bg-white/5 rounded w-1/4 mb-8"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           {[1,2,3,4].map(i => <div key={i} className="h-32 bg-white/5 rounded-2xl border border-white/5"></div>)}
-        </div>
-     </div>
-  );
-
-  const cards = [
-    { title: 'Active Chambers', value: stats.activeVoiceChannels || 0, icon: "Activity", color: "text-blue-400", glow: 'rgba(59,130,246,0.1)' },
-    { title: 'Hunters Engaged', value: stats.usersStudying || 0, icon: "Users", color: "text-purple-400", glow: 'rgba(168,85,247,0.1)' },
-    { title: 'Mana Harvested', value: `${(stats.totalHoursToday || 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
-    { title: 'System Pulse', value: '24ms', icon: "Zap", color: "text-yellow-400", glow: 'rgba(234,179,8,0.1)' }
-  ];
-
   const level = progress?.level || 0;
   const nextLvlXp = Math.pow(level + 1, 2) * 100;
   const currentLvlXp = Math.pow(level, 2) * 100;
   const currentXp = progress?.total_xp || 0;
   const xpProgressPercent = Math.min(100, Math.max(0, ((currentXp - currentLvlXp) / (nextLvlXp - currentLvlXp)) * 100)) || 0;
 
+  const cards = [
+    { title: 'Active Chambers', value: stats?.activeVoiceChannels ?? 0, icon: "Activity", color: "text-blue-400", glow: 'rgba(59,130,246,0.1)' },
+    { title: 'Hunters Engaged', value: stats?.usersStudying ?? 0, icon: "Users", color: "text-purple-400", glow: 'rgba(168,85,247,0.1)' },
+    { title: 'Mana Harvested', value: `${(stats?.totalHoursToday ?? 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
+    { title: 'System Pulse', value: '24ms', icon: "Zap", color: "text-yellow-400", glow: 'rgba(234,179,8,0.1)' }
+  ];
+
   return (
-    <div className="space-y-8 relative overflow-visible p-4">
+    <div className={`space-y-8 relative overflow-visible p-4 transition-opacity duration-500 ${!stats ? 'opacity-50' : 'opacity-100'}`}>
       <header className="flex flex-col gap-1">
          <h1 className="text-4xl font-extrabold tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase">Sanctum Overview</h1>
          <div className="flex items-center gap-2">
@@ -166,19 +157,21 @@ export default function DashboardOverview() {
                 </div>
             </div>
 
-            {nextReward && (
-               <div className="w-full lg:w-auto bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-4 relative group hover:border-orange-500/30 transition-all">
-                  <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all">
-                     <Icon name="Target" className="text-orange-400" size={24} />
-                  </div>
-                  <div>
-                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Upcoming Relic</p>
-                     <p className="font-bold text-white text-sm">
-                        Unlock at <span className="text-orange-400">{parseFloat(nextReward?.required_hours || 0)} hrs</span>
-                     </p>
-                  </div>
-               </div>
-            )}
+            <AnimatePresence>
+               {nextReward && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full lg:w-auto bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-4 relative group hover:border-orange-500/30 transition-all">
+                     <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all">
+                        <Icon name="Target" className="text-orange-400" size={24} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Upcoming Relic</p>
+                        <p className="font-bold text-white text-sm">
+                           Unlock at <span className="text-orange-400">{parseFloat(nextReward?.required_hours || 0)} hrs</span>
+                        </p>
+                     </div>
+                  </motion.div>
+               )}
+            </AnimatePresence>
          </div>
       </MagicPanel>
       
