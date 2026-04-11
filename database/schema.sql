@@ -113,3 +113,10 @@ CREATE TABLE IF NOT EXISTS pomodoro_sessions (
     started_at       TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(guild_id, voice_channel_id)
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id VARCHAR(255) PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    avatar_url TEXT,
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

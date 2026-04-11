@@ -80,6 +80,32 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleResetRealm = async (id, name) => {
+    if (!window.confirm(`🔥 DANGER: Wipe all progress and roles for ${name}? This will purge the leaderboard and reset all hunters to zero.`)) return;
+    if (!window.confirm(`FINAL CONFIRMATION: Are you absolutely sure? This ritual is permanent.`)) return;
+    
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.post(`${apiUrl}/admin/guilds/${id}/reset`, {}, { headers });
+      alert(res.data.message || "The realm has been purified.");
+    } catch (err) {
+      alert("The purification ritual failed: " + (err.response?.data?.error || "Unknown error"));
+    }
+  };
+
+  const handleResetUser = async (guildId, userId) => {
+    if (!guildId || !userId) return alert("You must provide both Realm and Hunter IDs.");
+    if (!window.confirm(`Purge all progress for hunter ${userId} in realm ${guildId}?`)) return;
+    
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.post(`${apiUrl}/admin/guilds/${guildId}/users/${userId}/reset`, {}, { headers });
+      alert(res.data.message || "The hunter has been reset.");
+    } catch (err) {
+      alert("Failed to reset hunter: " + (err.response?.data?.error || "Unknown error"));
+    }
+  };
+
   const filteredGuilds = guilds.filter(g => 
     g.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     g.id?.includes(searchTerm)
@@ -231,6 +257,14 @@ export default function AdminDashboard() {
                       </div>
 
                       <DungeonButton 
+                        variant="fire" 
+                        className="h-10 px-6 text-[10px]"
+                        onClick={() => handleResetRealm(g.id, g.name)}
+                      >
+                        Reset
+                      </DungeonButton>
+
+                      <DungeonButton 
                         variant="danger" 
                         className="h-10 px-6 text-[10px]"
                         onClick={() => handleLeave(g.id, g.name)}
@@ -250,9 +284,80 @@ export default function AdminDashboard() {
            )}
          </div>
       </MagicPanel>
+
+      {/* Manual Override Tools */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+         <MagicPanel className="p-8 border-red-500/10 bg-red-500/[0.02]" glowColor="rgba(239,68,68,0.1)">
+            <h3 className="text-sm font-black tracking-[0.2em] text-white uppercase italic mb-6 flex items-center gap-3">
+               <ShieldAlert className="text-red-500" size={18} />
+               Individual Hunter Reset
+            </h3>
+            <div className="space-y-4">
+               <p className="text-xs text-slate-500 font-medium leading-relaxed uppercase tracking-tighter">
+                  Purge all XP, Levels, and Roles for a specific hunter across a realm. 
+                  <span className="text-red-500/80 block mt-1">WARNING: This ritual cannot be undone.</span>
+               </p>
+               <div className="flex gap-3">
+                  <div className="flex-1 space-y-2">
+                     <input 
+                        id="reset-guild-id"
+                        type="text" 
+                        placeholder="Realm ID (Guild)" 
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 focus:border-red-500/40 outline-none transition-all"
+                     />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                     <input 
+                        id="reset-user-id"
+                        type="text" 
+                        placeholder="Hunter ID (User)" 
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 focus:border-red-500/40 outline-none transition-all"
+                     />
+                  </div>
+               </div>
+               <DungeonButton 
+                  variant="fire" 
+                  className="w-full justify-center py-4 bg-red-600 hover:bg-red-500"
+                  icon={Skull}
+                  onClick={() => {
+                     const gId = document.getElementById('reset-guild-id').value;
+                     const uId = document.getElementById('reset-user-id').value;
+                     handleResetUser(gId, uId);
+                  }}
+               >
+                  Initiate User Wipe
+               </DungeonButton>
+            </div>
+         </MagicPanel>
+
+         <MagicPanel className="p-8 border-slate-500/10 opacity-50 pointer-events-none">
+            <h3 className="text-sm font-black tracking-[0.2em] text-slate-500 uppercase italic mb-6">Network Health</h3>
+            <div className="space-y-4">
+               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                  <span>API Latency</span>
+                  <span>14ms</span>
+               </div>
+               <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                  <div className="w-1/3 h-full bg-green-500/50" />
+               </div>
+               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                  <span>Worker Load</span>
+                  <span>2.4%</span>
+               </div>
+               <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                  <div className="w-1/12 h-full bg-blue-500/50" />
+               </div>
+            </div>
+         </MagicPanel>
+      </div>
+
+      {/* Confirmation State (Simple alert/confirm for now, following user request of confirmation step) */}
     </div>
   );
 }
+
+// Logic helpers moved to main component scope (or added to handle functions)
+// ... in AdminDashboard.jsx
 
 function FeatureToggle({ active, icon: Icon, label, onClick }) {
   return (

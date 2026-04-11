@@ -107,4 +107,102 @@ router.delete('/guilds/:id', async (req, res) => {
   }
 });
 
+/**
+ * ─── Reset System ────────────────────────────────────────────────────────────
+ */
+
+// POST /admin/guilds/:id/reset - FULL SERVER RESET
+router.post('/guilds/:id/reset', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    console.log(`🧨 [ADMIN]: Initiating full reset for realm ${id}...`);
+
+    // 1. Fetch all managed role IDs for this guild
+    const [configRes, rewardsRes] = await Promise.all([
+      query('SELECT top1_role_id, top2_role_id, top3_role_id, top10_role_id FROM guild_configs WHERE guild_id = $1', [id]),
+      query('SELECT role_id FROM study_role_rewards WHERE guild_id = $1', [id])
+    ]);
+
+    const roleIds = new Set();
+    if (configRes.rows[0]) {
+      const c = configRes.rows[0];
+      if (c.top1_role_id) roleIds.add(c.top1_role_id);
+      if (c.top2_role_id) roleIds.add(c.top2_role_id);
+      if (c.top3_role_id) roleIds.add(c.top3_role_id);
+      if (c.top10_role_id) roleIds.add(c.top10_role_id);
+    }
+    rewardsRes.rows.forEach(r => roleIds.add(r.role_id));
+
+    // 2. Perform DB Wipe (Level data, leaderboards, and sessions)
+    await query('BEGIN');
+    try {
+      await query('DELETE FROM study_sessions WHERE guild_id = $1', [id]);
+      await query('DELETE FROM monthly_leaderboards WHERE guild_id = $1', [id]);
+      await query('UPDATE user_levels SET total_xp = 0, level = 0, total_study_hours = 0 WHERE guild_id = $1', [id]);
+      await query('COMMIT');
+    } catch (err) {
+      await query('ROLLBACK');
+      throw err;
+    }
+
+    // 3. Role Cleanup (Async/Best-effort to prevent timeout)
+    // We launch this in the background if there are many roles
+    const cleanupRoles = async () => {
+      for (const roleId of roleIds) {
+        const members = await discordService.getMembersWithRole(id, roleId);
+        console.log(`🧹 [ADMIN]: Stripping role ${roleId} from ${members.length} members...`);
+        for (const member of members) {
+          await discordService.removeGuildMemberRole(id, member.user.id, roleId);
+          // Small delay to be polite to Discord API
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+    };
+    cleanupRoles();
+
+    res.json({ success: true, message: 'The realm has been purified. DB records wiped, roles are being stripped in the background.' });
+  } catch (err) {
+    console.error('Admin Full Reset Error:', err);
+    res.status(500).json({ error: 'The purification ritual failed.' });
+  }
+});
+
+// POST /admin/guilds/:id/users/:userId/reset - INDIVIDUAL USER RESET
+router.post('/guilds/:id/users/:userId/reset', async (req, res) => {
+  const { id, userId } = req.params;
+
+  try {
+    // 1. Fetch managed roles
+    const [configRes, rewardsRes] = await Promise.all([
+      query('SELECT top1_role_id, top2_role_id, top3_role_id, top10_role_id FROM guild_configs WHERE guild_id = $1', [id]),
+      query('SELECT role_id FROM study_role_rewards WHERE guild_id = $1', [id])
+    ]);
+
+    const roleIds = [];
+    if (configRes.rows[0]) {
+      const c = configRes.rows[0];
+      if (c.top1_role_id) roleIds.push(c.top1_role_id);
+      if (c.top2_role_id) roleIds.push(c.top2_role_id);
+      if (c.top3_role_id) roleIds.push(c.top3_role_id);
+      if (c.top10_role_id) roleIds.push(c.top10_role_id);
+    }
+    rewardsRes.rows.forEach(r => roleIds.push(r.role_id));
+
+    // 2. DB Wipe for single user
+    await query('DELETE FROM monthly_leaderboards WHERE guild_id = $1 AND user_id = $2', [id, userId]);
+    await query('UPDATE user_levels SET total_xp = 0, level = 0, total_study_hours = 0 WHERE guild_id = $1 AND user_id = $2', [id, userId]);
+
+    // 3. Role Stripping for single user
+    for (const roleId of roleIds) {
+      await discordService.removeGuildMemberRole(id, userId, roleId);
+    }
+
+    res.json({ success: true, message: `Hunter ${userId} has been reset.` });
+  } catch (err) {
+    console.error('Admin User Reset Error:', err);
+    res.status(500).json({ error: 'Could not reset individual hunter progress.' });
+  }
+});
+
 export default router;

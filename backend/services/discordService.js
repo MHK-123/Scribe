@@ -209,5 +209,53 @@ export const discordService = {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     return data;
+  },
+
+  /**
+   * Fetch a specific guild member (Bot Token).
+   */
+  getGuildMember: async (guildId, userId) => {
+    try {
+      const { data } = await discordClient.get(`/guilds/${guildId}/members/${userId}`, {
+        headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
+      });
+      return data;
+    } catch (err) {
+      console.error(`❌ [DiscordService]: Failed to fetch member ${userId} in ${guildId}:`, err.message);
+      return null;
+    }
+  },
+
+  /**
+   * Remove a role from a guild member (Bot Token).
+   */
+  removeGuildMemberRole: async (guildId, userId, roleId) => {
+    try {
+      await discordClient.delete(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
+        headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
+      });
+      return true;
+    } catch (err) {
+      console.error(`❌ [DiscordService]: Failed to remove role ${roleId} from ${userId}:`, err.message);
+      return false;
+    }
+  },
+
+  /**
+   * List guild members with a specific role (Bot Token).
+   * Note: This requires pagination for large guilds, but we usually only care about the top users.
+   */
+  getMembersWithRole: async (guildId, roleId) => {
+    try {
+      // In a real production environment with 10k+ members, we'd use the gateway or iterate pagination.
+      // For now, we fetch up to 1000 members and filter.
+      const { data } = await discordClient.get(`/guilds/${guildId}/members?limit=1000`, {
+        headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
+      });
+      return data.filter(m => m.roles.includes(roleId));
+    } catch (err) {
+      console.error(`❌ [DiscordService]: Failed to list members in ${guildId}:`, err.message);
+      return [];
+    }
   }
 };

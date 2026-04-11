@@ -210,11 +210,60 @@ router.get('/:id/stats', async (req, res) => {
 });
 
 // GET /guilds/:id/leaderboard?type=all_time|monthly|last_month
+/**
+ * Helper to ensure user metadata is in the database.
+ */
+async function getLeaderboardMetadata(guildId, userIds) {
+  if (userIds.length === 0) return {};
+  
+  // 1. Fetch existing from DB
+  const dbUsers = await query(
+    `SELECT * FROM users WHERE user_id = ANY($1)`,
+    [userIds]
+  );
+  
+  const metadataMap = {};
+  dbUsers.rows.forEach(u => metadataMap[u.user_id] = u);
+  
+  // 2. Identify missing users or stale ones (older than 24h)
+  const missing = userIds.filter(id => {
+    const u = metadataMap[id];
+    if (!u) return true;
+    const cacheAge = (Date.now() - new Date(u.last_updated).getTime()) / 1000;
+    return cacheAge > 86400; // 24h stale
+  });
+
+  if (missing.length > 0) {
+    console.log(`📡 [Leaderboard]: Refreshing metadata for ${missing.length} users...`);
+    for (const userId of missing) {
+      const member = await discordService.getGuildMember(guildId, userId);
+      if (member && member.user) {
+        const username = member.user.username;
+        const avatar = member.user.avatar 
+          ? `https://cdn.discordapp.com/avatars/${userId}/${member.user.avatar}.png`
+          : null;
+        
+        await query(
+          `INSERT INTO users (user_id, username, avatar_url, last_updated)
+           VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (user_id) DO UPDATE 
+           SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url, last_updated = NOW()`,
+          [userId, username, avatar]
+        );
+        metadataMap[userId] = { user_id: userId, username, avatar_url: avatar };
+      }
+    }
+  }
+
+  return metadataMap;
+}
+
 router.get('/:id/leaderboard', async (req, res) => {
   const { id } = req.params;
   const { type } = req.query;
 
   try {
+    let rows = [];
     if (type === 'monthly') {
       const result = await query(
         `SELECT user_id, rank, total_hours FROM monthly_leaderboards
@@ -222,10 +271,8 @@ router.get('/:id/leaderboard', async (req, res) => {
          ORDER BY rank ASC`,
         [id]
       );
-      return res.json(result.rows);
-    }
-
-    if (type === 'last_month') {
+      rows = result.rows;
+    } else if (type === 'last_month') {
       const result = await query(
         `SELECT user_id, rank, total_hours FROM monthly_leaderboards
          WHERE guild_id = $1
@@ -234,22 +281,34 @@ router.get('/:id/leaderboard', async (req, res) => {
          ORDER BY rank ASC`,
         [id]
       );
-      return res.json(result.rows);
+      rows = result.rows;
+    } else {
+      // Default: all-time
+      const result = await query(
+        `SELECT user_id, SUM(duration) AS total_duration
+         FROM study_sessions WHERE guild_id = $1
+         GROUP BY user_id ORDER BY total_duration DESC LIMIT 100`,
+        [id]
+      );
+      rows = result.rows.map((row, i) => ({
+        user_id:     row.user_id,
+        total_hours: (row.total_duration / 3600).toFixed(2),
+        rank:        i + 1,
+      }));
     }
 
-    // Default: all-time
-    const result = await query(
-      `SELECT user_id, SUM(duration) AS total_duration
-       FROM study_sessions WHERE guild_id = $1
-       GROUP BY user_id ORDER BY total_duration DESC LIMIT 100`,
-      [id]
-    );
-    res.json(result.rows.map((row, i) => ({
-      user_id:     row.user_id,
-      total_hours: (row.total_duration / 3600).toFixed(2),
-      rank:        i + 1,
-    })));
+    const userIds = rows.map(r => r.user_id);
+    const metadata = await getLeaderboardMetadata(id, userIds);
+
+    const merged = rows.map(r => ({
+      ...r,
+      username:   metadata[r.user_id]?.username || `Hunter ${r.user_id.slice(-4)}`,
+      avatar_url: metadata[r.user_id]?.avatar_url || null
+    }));
+
+    res.json(merged);
   } catch (err) {
+    console.error('Leaderboard Fetch Error:', err);
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 });
