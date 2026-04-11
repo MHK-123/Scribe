@@ -228,7 +228,7 @@ function LiveSessionCard({ session }) {
           </div>
           <div style={{ height:'4px', background:'rgba(255,255,255,0.03)', borderRadius:'99px', overflow:'hidden' }}>
             <motion.div style={{ height:'100%', background:color, boxShadow:`0 0 12px ${color}44`, borderRadius:'99px' }}
-              animate={{ width:`${(progress * 100).toFixed(1)}%` }} transition={{ duration:1 }}/>
+              animate={{ width:`${(Number(progress) * 100).toFixed(1)}%` }} transition={{ duration:1 }}/>
           </div>
         </div>
       </div>

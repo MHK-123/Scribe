@@ -100,7 +100,7 @@ export default function DashboardOverview() {
   const cards = [
     { title: 'Active Chambers', value: stats?.activeVoiceChannels ?? 0, icon: "Activity", color: "text-blue-400", glow: 'rgba(59,130,246,0.1)' },
     { title: 'Hunters Engaged', value: stats?.usersStudying ?? 0, icon: "Users", color: "text-purple-400", glow: 'rgba(168,85,247,0.1)' },
-    { title: 'Mana Harvested', value: `${(stats?.totalHoursToday ?? 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
+    { title: 'Mana Harvested', value: `${Number(stats?.totalHoursToday || 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
     { title: 'System Pulse', value: '24ms', icon: "Zap", color: "text-yellow-400", glow: 'rgba(234,179,8,0.1)' }
   ];
 
@@ -149,7 +149,7 @@ export default function DashboardOverview() {
                    </h3>
                    <div className="flex flex-wrap gap-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
                       <span className="flex items-center gap-1.5"><Icon name="Sword" size={12} className="text-slate-400"/> {currentXp} / {nextLvlXp} Essence</span>
-                      <span className="flex items-center gap-1.5"><Icon name="Clock" size={12} className="text-slate-400"/> {parseFloat(progress?.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
+                      <span className="flex items-center gap-1.5"><Icon name="Clock" size={12} className="text-slate-400"/> {Number(progress?.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
                    </div>
                    <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden border border-white/5">
                       <motion.div initial={{ width: 0 }} animate={{ width: `${xpProgressPercent}%` }} transition={{ duration: 1 }} className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
