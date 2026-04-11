@@ -14,20 +14,24 @@ export const AuthProvider = ({ children }) => {
   const isProd = window.location.hostname.includes('vercel.app');
   const prodApi = 'https://scribe-1r8k.onrender.com';
   const localApi = 'http://localhost:3000';
-  const apiUrl = (import.meta.env.VITE_API_URL || (isProd ? prodApi : localApi)).trim();
+  
+  // Hardened apiUrl resolution
+  const internalViteApi = import.meta.env.VITE_API_URL;
+  const apiUrl = (internalViteApi || (isProd ? prodApi : localApi)).toString().trim();
 
   // ─── CENTRALIZED API INSTANCE (Hardened) ───────────────────────────────────
   const api = useMemo(() => {
     const instance = axios.create({
       baseURL: apiUrl,
-      timeout: 90000, // Manifested: 90s to surpass the 63s Render cold-start lag
+      timeout: 30000, // 30s is more standard
       headers: { Authorization: token ? `Bearer ${token}` : '' }
     });
 
     instance.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 429) {
+        // Defensive Rate Limit Handling
+        if (error.response && error.response.status === 429) {
           console.error('⚠️ [SENTINEL]: PORTAL CENSORED (429). HIGH FLUX DETECTED.');
           setIsRateLimited(true);
           setRetryAfter(parseInt(error.response.headers['retry-after'] || 60));
@@ -69,22 +73,28 @@ export const AuthProvider = ({ children }) => {
     let isSubscribed = true;
     const verifyToken = async () => {
       try {
+        console.log("Attempting to verify token with API:", apiUrl);
         const res = await api.get('/auth/user');
-        if (isSubscribed) setUser(res.data.user);
+        if (isSubscribed) {
+          setUser(res.data?.user || null);
+        }
       } catch (err) {
-        if (err.response?.status === 401 || err.response?.status === 403) {
+        console.warn("Token verification failed:", err.message);
+        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
           localStorage.removeItem('token');
           setToken(null);
           setUser(null);
         }
       } finally {
-        if (isSubscribed) setLoading(false);
+        if (isSubscribed) {
+           setLoading(false);
+        }
       }
     };
 
     verifyToken();
     return () => { isSubscribed = false; };
-  }, [token, api, isRateLimited]);
+  }, [token, api, isRateLimited, apiUrl]);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -93,7 +103,7 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/';
   };
 
-  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1488552752333455481&redirect_uri=${encodeURIComponent(`${apiUrl}/auth/callback`)}&response_type=code&scope=identify%20guilds`;
+  const discordAuthUrl = `https://discord.com/oauth2/authorize?client_id=1488552752333455481&redirect_uri=${encodeURIComponent(`${apiUrl.replace(/\/$/, '')}/auth/callback`)}&response_type=code&scope=identify%20guilds`;
   
   return (
     <AuthContext.Provider value={{ user, loading, logout, apiUrl, token, isRateLimited, retryAfter, discordAuthUrl, api }}>

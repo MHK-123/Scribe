@@ -2,67 +2,93 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { Users, Clock, Zap, Activity, Sparkles, TrendingUp, Target, Shield, Sword, Flame } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+import * as Lucide from 'lucide-react';
+import { 
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area 
+} from 'recharts';
 import { io } from 'socket.io-client';
 
 import MagicPanel from '../components/MagicPanel.jsx';
 import DungeonButton from '../components/DungeonButton.jsx';
 
+// Safety wrapper for icons
+const Icon = ({ name, size = 18, className = "" }) => {
+  const LucideIcon = Lucide[name] || Lucide.HelpCircle;
+  return <LucideIcon size={size} className={className} />;
+};
+
 export default function DashboardOverview() {
   const { id } = useParams();
   const { token, apiUrl } = useContext(AuthContext);
-  const [stats, setStats]         = useState(null);
-  const [progress, setProgress]   = useState({ level: 0, total_xp: 0, total_study_hours: 0 });
+  
+  // High-fidelity state with defaults
+  const [stats, setStats] = useState(null);
+  const [progress, setProgress] = useState({ level: 0, total_xp: 0, total_study_hours: 0 });
   const [nextReward, setNextReward] = useState(null);
   const [chartData, setChartData] = useState([]);
+  const [errorStatus, setErrorStatus] = useState(null);
 
   useEffect(() => {
-    // Strictly clear all component state caches on server switch to prevent phantom data leaks
+    if (!id || id === 'undefined') return;
+
+    // Reset state on server switch
     setStats(null);
     setProgress({ level: 0, total_xp: 0, total_study_hours: 0 });
     setNextReward(null);
     setChartData([]);
+    setErrorStatus(null);
 
     const headers = { Authorization: `Bearer ${token}` };
-    Promise.all([
-      axios.get(`${apiUrl}/guilds/${id}/stats`,         { headers }),
-      axios.get(`${apiUrl}/guilds/${id}/user-progress`, { headers }),
-      axios.get(`${apiUrl}/settings/rewards/${id}`,     { headers }),
-      axios.get(`${apiUrl}/guilds/${id}/weekly-hours`,  { headers }),
-    ]).then(([statsRes, progRes, rewRes, chartRes]) => {
-      setStats(statsRes.data || {});
-      setProgress(progRes.data || { level: 0, total_xp: 0, total_study_hours: 0 });
-      setChartData(Array.isArray(chartRes.data) ? chartRes.data : []);
-      
-      const upcoming = Array.isArray(rewRes.data) 
-         ? rewRes.data.find(r => parseFloat(r.required_hours) > parseFloat(progRes.data?.total_study_hours || 0)) 
-         : null;
-      setNextReward(upcoming);
-    }).catch(err => {
-      console.error('Failed to load dashboard data:', err);
-      // Fallback empty data so it doesn't crash the white screen
-      setStats({ activeVoiceChannels: 0, usersStudying: 0, totalHoursToday: 0 });
-      setProgress({ level: 0, total_xp: 0, total_study_hours: 0 });
-      setChartData([]);
-    });
+    const cancelTokenSource = axios.CancelToken.source();
+
+    const fetchData = async () => {
+      try {
+        const [statsRes, progRes, rewRes, chartRes] = await Promise.all([
+          axios.get(`${apiUrl}/guilds/${id}/stats`,         { headers, cancelToken: cancelTokenSource.token }),
+          axios.get(`${apiUrl}/guilds/${id}/user-progress`, { headers, cancelToken: cancelTokenSource.token }),
+          axios.get(`${apiUrl}/settings/rewards/${id}`,     { headers, cancelToken: cancelTokenSource.token }),
+          axios.get(`${apiUrl}/guilds/${id}/weekly-hours`,  { headers, cancelToken: cancelTokenSource.token }),
+        ]);
+
+        setStats(statsRes.data || { activeVoiceChannels: 0, usersStudying: 0, totalHoursToday: 0 });
+        setProgress(progRes.data || { level: 0, total_xp: 0, total_study_hours: 0 });
+        setChartData(Array.isArray(chartRes.data) ? chartRes.data : []);
+        
+        const currentHours = parseFloat(progRes.data?.total_study_hours || 0);
+        const upcoming = Array.isArray(rewRes.data) 
+           ? rewRes.data.find(r => parseFloat(r.required_hours || 0) > currentHours) 
+           : null;
+        setNextReward(upcoming);
+      } catch (err) {
+        if (axios.isCancel(err)) return;
+        console.error('Failed to load dashboard data:', err);
+        setErrorStatus("Connection to server is unstable. Using cached/local data.");
+        // Fallback safety
+        setStats({ activeVoiceChannels: 0, usersStudying: 0, totalHoursToday: 0 });
+      }
+    };
+
+    fetchData();
 
     // Socket real-time updates
-    const socket = io(apiUrl);
+    const socket = io(apiUrl, { transports: ['websocket', 'polling'] });
     socket.emit('join_guild_room', id);
     
-    socket.on('vc_created', (data) => {
-       setStats(s => s ? { ...s, activeVoiceChannels: s.activeVoiceChannels + 1 } : s);
+    socket.on('vc_created', () => {
+       setStats(s => s ? { ...s, activeVoiceChannels: (s.activeVoiceChannels || 0) + 1 } : s);
     });
-    socket.on('vc_deleted', (data) => {
-       setStats(s => s ? { ...s, activeVoiceChannels: Math.max(0, s.activeVoiceChannels - 1) } : s);
+    socket.on('vc_deleted', () => {
+       setStats(s => s ? { ...s, activeVoiceChannels: Math.max(0, (s.activeVoiceChannels || 0) - 1) } : s);
     });
     socket.on('user_level_up', (data) => {
-       setProgress(p => p ? { ...p, level: data.level, total_xp: data.xp } : p);
+       setProgress(p => p ? { ...p, level: data?.level || p.level, total_xp: data?.xp || p.total_xp } : p);
     });
 
-    return () => socket.disconnect();
+    return () => {
+      cancelTokenSource.cancel();
+      socket.disconnect();
+    };
   }, [id, apiUrl, token]);
 
   if (!stats) return (
@@ -75,15 +101,17 @@ export default function DashboardOverview() {
   );
 
   const cards = [
-    { title: 'Active Chambers', value: stats.activeVoiceChannels, icon: <Activity className="text-blue-400 w-5 h-5"/>, glow: 'rgba(59,130,246,0.1)' },
-    { title: 'Hunters Engaged', value: stats.usersStudying || 0, icon: <Users className="text-purple-400 w-5 h-5"/>, glow: 'rgba(168,85,247,0.1)' },
-    { title: 'Mana Harvested', value: `${stats.totalHoursToday}h`, icon: <Flame className="text-orange-400 w-5 h-5"/>, glow: 'rgba(249,115,22,0.1)' },
-    { title: 'System Pulse', value: '24ms', icon: <Zap className="text-yellow-400 w-5 h-5"/>, glow: 'rgba(234,179,8,0.1)' }
+    { title: 'Active Chambers', value: stats.activeVoiceChannels || 0, icon: "Activity", color: "text-blue-400", glow: 'rgba(59,130,246,0.1)' },
+    { title: 'Hunters Engaged', value: stats.usersStudying || 0, icon: "Users", color: "text-purple-400", glow: 'rgba(168,85,247,0.1)' },
+    { title: 'Mana Harvested', value: `${(stats.totalHoursToday || 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
+    { title: 'System Pulse', value: '24ms', icon: "Zap", color: "text-yellow-400", glow: 'rgba(234,179,8,0.1)' }
   ];
 
-  const nextLvlXp = Math.pow(progress.level + 1, 2) * 100;
-  const currentLvlXp = Math.pow(progress.level, 2) * 100;
-  const xpProgressPercent = Math.min(100, Math.max(0, ((progress.total_xp - currentLvlXp) / (nextLvlXp - currentLvlXp)) * 100)) || 0;
+  const level = progress?.level || 0;
+  const nextLvlXp = Math.pow(level + 1, 2) * 100;
+  const currentLvlXp = Math.pow(level, 2) * 100;
+  const currentXp = progress?.total_xp || 0;
+  const xpProgressPercent = Math.min(100, Math.max(0, ((currentXp - currentLvlXp) / (nextLvlXp - currentLvlXp)) * 100)) || 0;
 
   return (
     <div className="space-y-8 relative overflow-visible p-4">
@@ -94,6 +122,14 @@ export default function DashboardOverview() {
             <p className="text-slate-400 font-medium tracking-wide text-xs uppercase">Realm Identification: <span className="text-blue-400">{id}</span></p>
          </div>
       </header>
+
+      <AnimatePresence>
+        {errorStatus && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-orange-500/10 border border-orange-500/20 p-3 rounded-xl text-orange-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+            <Lucide.AlertCircle size={14} /> {errorStatus}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hero Progress Section */}
       <MagicPanel className="p-8 border-blue-500/10" glowColor="rgba(59,130,246,0.1)">
@@ -110,19 +146,19 @@ export default function DashboardOverview() {
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
                          <span className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em] -mb-1">Rank</span>
-                         <span className="text-3xl font-black">{progress.level}</span>
+                         <span className="text-3xl font-black">{level}</span>
                       </div>
                    </div>
                 </div>
 
                 <div className="space-y-2">
                    <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                      <Shield className="text-blue-500 w-5 h-5" />
+                      <Icon name="Shield" className="text-blue-500" size={20} />
                       Hunter Progress
                    </h3>
                    <div className="flex flex-wrap gap-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
-                      <span className="flex items-center gap-1.5"><Sword size={12} className="text-slate-400"/> {progress.total_xp} / {nextLvlXp} Essence</span>
-                      <span className="flex items-center gap-1.5"><Clock size={12} className="text-slate-400"/> {parseFloat(progress.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
+                      <span className="flex items-center gap-1.5"><Icon name="Sword" size={12} className="text-slate-400"/> {currentXp} / {nextLvlXp} Essence</span>
+                      <span className="flex items-center gap-1.5"><Icon name="Clock" size={12} className="text-slate-400"/> {parseFloat(progress?.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
                    </div>
                    <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden border border-white/5">
                       <motion.div initial={{ width: 0 }} animate={{ width: `${xpProgressPercent}%` }} transition={{ duration: 1 }} className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
@@ -133,12 +169,12 @@ export default function DashboardOverview() {
             {nextReward && (
                <div className="w-full lg:w-auto bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-4 relative group hover:border-orange-500/30 transition-all">
                   <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all">
-                     <Target className="text-orange-400 w-6 h-6" />
+                     <Icon name="Target" className="text-orange-400" size={24} />
                   </div>
                   <div>
                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Upcoming Relic</p>
                      <p className="font-bold text-white text-sm">
-                        Unlock at <span className="text-orange-400">{parseFloat(nextReward.required_hours)} hrs</span>
+                        Unlock at <span className="text-orange-400">{parseFloat(nextReward?.required_hours || 0)} hrs</span>
                      </p>
                   </div>
                </div>
@@ -157,7 +193,7 @@ export default function DashboardOverview() {
                <div className="flex justify-between items-start mb-6">
                   <h3 className="text-slate-500 font-bold uppercase tracking-[0.15em] text-[10px]">{card.title}</h3>
                   <div className="p-2 rounded-lg bg-white/5 border border-white/10 shadow-inner">
-                     {card.icon}
+                     <Icon name={card.icon} className={card.color} size={20} />
                   </div>
                </div>
                
@@ -177,12 +213,11 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         
          {/* Activity Chart */}
          <MagicPanel className="lg:col-span-2 p-6 h-[320px] flex flex-col border-white/5" glowColor="rgba(59,130,246,0.03)">
             <div className="flex justify-between items-center mb-4">
                <h3 className="text-sm font-bold flex items-center gap-3 text-white">
-                  <Activity className="w-4 h-4 text-blue-500" />
+                  <Icon name="Activity" className="text-blue-500" size={16} />
                   Mana Flux Pattern
                </h3>
                <div className="flex gap-2">
@@ -192,36 +227,25 @@ export default function DashboardOverview() {
             
             <div className="flex-1 w-full h-full min-h-0">
                <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                   <defs>
-                     <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                     </linearGradient>
-                   </defs>
-                   <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
-                   <YAxis stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                   <Tooltip 
-                     contentStyle={{ 
-                        backgroundColor: '#0a0a0f', 
-                        borderColor: 'rgba(255,255,255,0.05)', 
-                        borderRadius: '12px',
-                        boxShadow: '0 0 20px rgba(0,0,0,0.5)',
-                        color: '#fff',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                     }} 
-                   />
-                   <Area 
-                     type="monotone" 
-                     dataKey="hours" 
-                     stroke="#3b82f6" 
-                     strokeWidth={3} 
-                     fillOpacity={1} 
-                     fill="url(#colorHours)" 
-                     animationDuration={2000}
-                   />
-                 </AreaChart>
+                 {chartData.length > 0 ? (
+                    <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
+                      <YAxis stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ backgroundColor: '#0a0a0f', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', color: '#fff' }} />
+                      <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                    </AreaChart>
+                 ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 space-y-2">
+                       <Icon name="BarChart3" size={32} />
+                       <span className="text-[10px] font-bold uppercase tracking-widest">Awaiting Mana Streams...</span>
+                    </div>
+                 )}
                </ResponsiveContainer>
             </div>
          </MagicPanel>
@@ -231,34 +255,26 @@ export default function DashboardOverview() {
             <div className="relative">
                <div className="flex items-center gap-3 mb-6">
                   <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-[0_0_15_rgb(59,130,246,0.1)]">
-                     <Sparkles className="text-blue-500 w-5 h-5 shadow-inner" />
+                     <Icon name="Sparkles" className="text-blue-500" size={20} />
                   </div>
                   <h3 className="text-xl font-black text-white tracking-tight uppercase italic">Ancient Oracle</h3>
                </div>
-               
                <div className="space-y-4">
-                  <p className="text-slate-400 text-sm leading-relaxed font-medium">
-                     The mana cores resonate with intense frequency. Here is my prophecy:
-                  </p>
-                  
+                  <p className="text-slate-400 text-sm leading-relaxed font-medium">The mana cores resonate with intense frequency. Here is my prophecy:</p>
                   <div className="bg-black/40 border border-white/5 p-4 rounded-xl shadow-inner relative overflow-hidden group">
                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
                      <p className="text-white leading-relaxed text-sm font-medium pl-2 italic">
-                        Harvest peaks during <span className="text-blue-400 font-bold underline">Lunar Noon</span>. 
-                        Fellow hunters harvested <span className="text-blue-400 font-bold">20% more essence</span> this cycle. 
-                        Summon a group expedition to maximize mana gain!
+                        Harvest peaks during <span className="text-blue-400 font-bold underline">Lunar Noon</span>. Fellow hunters harvested <span className="text-blue-400 font-bold">20% more essence</span> this cycle. Summons result in optimized mana gain!
                      </p>
                   </div>
                </div>
             </div>
-            
             <div className="mt-8">
-               <DungeonButton variant="fire" className="w-full justify-center" icon={Sparkles}>
+               <DungeonButton variant="fire" className="w-full justify-center" icon={Lucide.Sparkles}>
                   Consult Full Prophecy
                </DungeonButton>
             </div>
          </MagicPanel>
-         
       </div>
     </div>
   );

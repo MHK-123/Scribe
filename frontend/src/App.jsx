@@ -193,10 +193,21 @@ const DashboardLayout = () => {
 
 // ─── Protected Route ─────────────────────────────────────────────────────────
 const ProtectedRoute = () => {
-  const { user, loading, token } = useContext(AuthContext);
+  const { user, loading, token, logout } = useContext(AuthContext);
   const location = useLocation();
+  const [showRetry, setShowRetry] = React.useState(false);
 
-  // If we are currently verifying identity, manifest the loading portal
+  // Safety timer: If stuck in loading for more than 7 seconds, show a retry/logout button
+  React.useEffect(() => {
+    let timer;
+    if (loading && token) {
+      timer = setTimeout(() => setShowRetry(true), 7000);
+    } else {
+      setShowRetry(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading, token]);
+
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#020205]">
        <div className="relative">
@@ -205,29 +216,68 @@ const ProtectedRoute = () => {
             <div className="w-4 h-4 bg-white rounded-full animate-ping shadow-[0_0_20px_white]" />
           </div>
        </div>
-      <p className="text-slate-500 text-[10px] font-bold tracking-[0.4em] uppercase animate-pulse">Synchronizing Identity...</p>
+      <div className="text-center space-y-4">
+        <p className="text-slate-500 text-[10px] font-bold tracking-[0.4em] uppercase animate-pulse">Synchronizing Identity...</p>
+        
+        <AnimatePresence>
+          {showRetry && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <p className="text-red-400/60 text-[9px] font-bold uppercase tracking-widest">Connection to Sanctum is delayed</p>
+              <div className="flex gap-4 justify-center">
+                <DungeonButton 
+                  variant="ghost" 
+                  onClick={() => window.location.reload()} 
+                  className="px-4 py-2 text-[10px]"
+                >
+                  Retry Connection
+                </DungeonButton>
+                <DungeonButton 
+                  variant="danger" 
+                  onClick={logout}
+                  className="px-4 py-2 text-[10px]"
+                >
+                  Reset Session
+                </DungeonButton>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 
-  // If no user and no token, the hunter is unauthorized
   if (!user && !token) {
-    console.warn('⚡ [Guard]: No identity detected. Redirecting to login sanctuary.');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If we have a token but user is still null (and loading is somehow false), 
-  // we are likely in a 'stale' or 'network error' state. We should NOT redirect, 
-  // but instead show a retry or just stay in loading.
   if (!user && token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#020205]">
-        <p className="text-slate-500 text-[10px] font-bold tracking-[0.4em] uppercase">Manifesting Realm... (Backend Waking Up)</p>
+        <div className="relative">
+          <Zap className="text-blue-500 animate-pulse" size={48} />
+          <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
+        </div>
+        <div className="text-center space-y-4">
+          <p className="text-slate-500 text-[10px] font-bold tracking-[0.4em] uppercase">Manifesting Realm...</p>
+          <p className="text-slate-600 text-[9px] font-medium uppercase tracking-widest italic">The backend is currently cold-starting</p>
+          
+          <div className="mt-8 flex gap-4 justify-center">
+             <DungeonButton variant="ghost" onClick={logout} className="px-4 py-2 text-[10px]">
+               Back to Login
+             </DungeonButton>
+          </div>
+        </div>
       </div>
     );
   }
 
   return <Outlet />;
 };
+
 
 // ─── App ─────────────────────────────────────────────────────────────────────
 export default function App() {
