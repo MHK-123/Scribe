@@ -1,288 +1,274 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Shield, Menu, PanelLeft, Zap, Plus, Server, Timer, ShieldCheck, 
-  BarChart3, Home as HomeIcon, BookOpen, LifeBuoy, Settings as SettingsIcon, 
-  PlusCircle, MessageSquare, Github, Terminal, Mic, Hash, Circle
+  Shield, PanelLeft, Zap, Settings, BookOpen, LifeBuoy, 
+  LayoutDashboard, UserPlus, Mic, Clock, TrendingUp, BarChart3,
+  Home as HomeIcon, Lock
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import '../styles/theme-landing.css';
 
 export default function Home() {
     const [sidebarActive, setSidebarActive] = useState(window.innerWidth > 1024);
-    const [activeStep, setActiveStep] = useState(0);
     const [activeCommand, setActiveCommand] = useState('-help');
-    
-    // ─── Path Enforcement Guard ──────────────────────────────────────────────────
-    useEffect(() => {
-        console.log(`--- [GUARD]: Home Sanctum Active at: ${window.location.pathname} ---`);
-        if (window.location.pathname === '/' && !window.location.search.includes('token=')) {
-            console.log('--- [GUARD]: Root Path Manifested. Clearing legacy redirect states. ---');
-        }
-    }, []);
-
-    // ─── Sanctum Ignition Control (Blue Fire Click Effect) ───────────────────────
-    useEffect(() => {
-        const createIgnitionFlare = (e) => {
-            if (e.target.closest('.ignition-target')) {
-                const flare = document.createElement('div');
-                flare.className = 'ignition-flare';
-                flare.style.left = `${e.clientX}px`;
-                flare.style.top = `${e.clientY}px`;
-                
-                document.getElementById('ignition-layer').appendChild(flare);
-                flare.addEventListener('animationend', () => {
-                    flare.remove();
-                });
-            }
-        };
-        document.addEventListener('click', createIgnitionFlare);
-        return () => document.removeEventListener('click', createIgnitionFlare);
-    }, []);
-
-    const terminalLines = {
-        '-help': { cmd: '-help', resp: 'Sanctum System Interface. Overview of all command nodes and active dungeon protocols. (Private Manifest)' },
-        '/config': { cmd: '/config', resp: 'Access core calibration nodes via the Web Dashboard. Requires Administrator authority levels.' },
-        '-l (Leaderboard)': { cmd: '-l', resp: 'Fetch global hunter rankings. Displays study intensity levels and accumulated hours.' },
-        '-m (Profile)': { cmd: '-m', resp: 'Retrieve personal hunter profile card with XP progression and leveling milestones.' },
-        '/vc-rename': { cmd: '/vc-rename', resp: 'Recalibrate the identity of your temporary voice sanctuary.' },
-        '/vc-lock': { cmd: '/vc-lock', resp: 'Seal the dungeon portal. Prevents any uninvited hunters from entering.' },
-        '/vc-unlock': { cmd: '/vc-unlock', resp: 'Unseal the portal. Allows the sanctuary to be discovered by all.' },
-        '/vc-limit': { cmd: '/vc-limit', resp: 'Configure the maximum hunter capacity for the current dungeon.' },
-        '/vc-invite': { cmd: '/vc-invite', resp: 'Send a targeted summon signal to a hunter via private DM.' },
-        '/pomodoro-create': { cmd: '/pomodoro-create', resp: 'Manifest a custom focus engine in your current VC with specified intervals.' }
-    };
-
-    const steps = [
-        { title: "Choose Your Realm", desc: "Select a server where the bot is added and you have authority to summon the Scribe.", img: "/images/servers_page_1775231893650.png" },
-        { title: "VC Setup (Spawn Config)", desc: "Select an Anchor VC and Target Category to manifest temporary voice sanctuaries instantly.", img: "/images/vc_setup_page_1775231920150.png" },
-        { title: "Pomodoro Setup", desc: "Configure voice and text channels with custom focus durations to automate your study rituals.", img: "/images/pomodoro_config_form_1775231976476.png" },
-        { title: "Start First Session", desc: "Join a configured VC or click \"Start New Session\" to ignite the Focus Engine and begin tracking.", img: "/images/pomodoro_dashboard_page_1775231960603.png" },
-        { title: "Verify System (Overview)", desc: "Trace active sessions, monitored rooms, and cumulative focus time via the Sanctum Overview.", img: "/images/dashboard_overview_1775231908678.png" },
-        { title: "Leaderboard & Rewards", desc: "Earn experience from focus hours to ascend the global leaderboard and manifest earned rewards.", img: "/images/leaderboard_page_1775231988729.png" }
-    ];
 
     const inviteLink = "https://discord.com/api/oauth2/authorize?client_id=1488552752333455481&permissions=8&scope=bot%20applications.commands";
 
+    // --- Command Interface Logic & Mockups ---
+    const commandsData = [
+        { id: '-help', name: '-help', desc: 'Display global system status and loaded protocols', type: 'Slash Command', cooldown: '5s', perms: 'User' },
+        { id: '-m', name: '-m (Profile)', desc: 'Fetch hunter profile card and XP progression', type: 'Legacy Prefix', cooldown: '10s', perms: 'User' },
+        { id: '-l', name: '-l (Leaderboard)', desc: 'Global rankings based on focus hours', type: 'Legacy Prefix', cooldown: '15s', perms: 'User' },
+        { id: '/pomodoro-create', name: '/pomodoro-create', desc: 'Manifest focus engine in current voice sanctuary', type: 'Slash Command', cooldown: '10s', perms: 'User' },
+        { id: '/vc-lock', name: '/vc-lock', desc: 'Seal the portal to protect from intruders', type: 'Slash Command', cooldown: '5s', perms: 'Admin' }
+    ];
+
+    const renderMockup = () => {
+        switch(activeCommand) {
+            case '-help': return (
+                <div className="mockup-container">
+                    <div className="mockup-header">
+                        <LayoutDashboard size={20} />
+                        <span>SYSTEM STATUS</span>
+                    </div>
+                    <div className="mockup-stat-grid">
+                        <div className="stat-box">
+                            <div className="stat-val">124</div>
+                            <div className="stat-label">Active Users</div>
+                        </div>
+                        <div className="stat-box">
+                            <div className="stat-val">32</div>
+                            <div className="stat-label">Active Sessions</div>
+                        </div>
+                        <div className="stat-box">
+                            <div className="stat-val">18</div>
+                            <div className="stat-label">Commands Loaded</div>
+                        </div>
+                    </div>
+                </div>
+            );
+            case '-m': return (
+                <div className="mockup-container">
+                    <div className="mockup-header">
+                        <Shield size={20} />
+                        <span>HUNTER PROFILE</span>
+                    </div>
+                    <div className="profile-mockup">
+                        <div className="profile-avatar"></div>
+                        <div className="profile-info">
+                            <div className="profile-name">ShadowMonarch</div>
+                            <div className="profile-rank">Rank: S-Class Hunter</div>
+                            <div className="xp-bar-bg">
+                                <div className="xp-bar-fill"></div>
+                            </div>
+                            <div className="xp-text">
+                                <span>Level 42</span>
+                                <span>8,450 / 10,000 XP</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+            case '-l': return (
+                <div className="mockup-container">
+                    <div className="mockup-header">
+                        <BarChart3 size={20} />
+                        <span>GLOBAL LEADERBOARD</span>
+                    </div>
+                    <div>
+                        <div className="lb-row">
+                            <span className="lb-rank">1</span>
+                            <span className="lb-name">UserA</span>
+                            <span className="lb-xp">1240 XP</span>
+                        </div>
+                        <div className="lb-row">
+                            <span className="lb-rank">2</span>
+                            <span className="lb-name">UserB</span>
+                            <span className="lb-xp">980 XP</span>
+                        </div>
+                        <div className="lb-row">
+                            <span className="lb-rank">3</span>
+                            <span className="lb-name">UserC</span>
+                            <span className="lb-xp">870 XP</span>
+                        </div>
+                    </div>
+                </div>
+            );
+            case '/pomodoro-create': return (
+                <div className="mockup-container timer-mockup" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                    <div className="timer-circle">
+                        <div className="timer-time">25:00</div>
+                    </div>
+                    <div className="timer-status typing-anim">STATUS: FOCUS MODE</div>
+                </div>
+            );
+            case '/vc-lock': return (
+                <div className="mockup-container lock-mockup" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+                    <div className="lock-icon-wrapper">
+                        <Lock size={48} />
+                    </div>
+                    <div className="lock-text">Channel Secured</div>
+                </div>
+            );
+            default: return null;
+        }
+    };
+
+    const activeCmdData = commandsData.find(c => c.id === activeCommand);
+
     return (
         <div className={`landing-root ${sidebarActive ? 'sidebar-active' : ''}`}>
-            {/* Ignition Layer */}
-            <div id="ignition-layer" style={{ position:'fixed', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:9999 }}></div>
-
-            {/* Navigation */}
+            
+            {/* Navbar */}
             <nav className="navbar">
                 <div className="nav-container">
-                    <div className="flex items-center gap-4">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <button 
-                            className="menu-toggle ignition-target" 
+                            className="menu-toggle" 
                             onClick={() => setSidebarActive(!sidebarActive)}
-                            title="Toggle Sanctuary Nodes"
-                            style={{ background:'none', border:'none', color:'#fff', cursor:'pointer' }}
                         >
-                            <PanelLeft size={20} />
+                            <PanelLeft size={24} />
                         </button>
                         <Link to="/" className="logo">
-                            <Shield className="logo-icon" />
+                            <Shield className="logo-icon" size={24} />
                             <span>SCRIBE</span>
                         </Link>
                     </div>
                     <ul className="nav-links">
-                        <li><a href="#features" className="ignition-target">Features</a></li>
-                        <li><a href="#docs" className="ignition-target">Docs</a></li>
-                        <li><a href="https://discord.gg/qdP5WemFfd" target="_blank" className="ignition-target">Support</a></li>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#docs">Docs</a></li>
+                        <li><a href="https://discord.gg/qdP5WemFfd" target="_blank" rel="noreferrer">Support</a></li>
                     </ul>
-                    <div className="nav-actions">
-                        <Link to="/servers" className="btn btn-secondary ignition-target">Dashboard</Link>
-                    </div>
                 </div>
             </nav>
 
-            {/* Global Sidebar */}
+            {/* Sidebar (Left) */}
             <aside className={`side-nav ${sidebarActive ? 'active' : ''}`}>
                 <div className="side-label">INTERNAL NODES</div>
-                <ul className="side-links">
-                    <li className="active"><a href="#home" className="ignition-target"><HomeIcon size={18} /> Home Sanctum</a></li>
-                    <li><a href="#features" className="ignition-target"><Zap size={18} /> Core Features</a></li>
-                    <li><a href="#setup" className="ignition-target"><Server size={18} /> Realm Setup</a></li>
-                    <li><a href="#docs" className="ignition-target"><BookOpen size={18} /> Archive Docs</a></li>
-                    <li><a href="https://discord.gg/qdP5WemFfd" target="_blank" className="ignition-target"><LifeBuoy size={18} /> Support Node</a></li>
+                <ul className="side-links" style={{ marginBottom: '2rem' }}>
+                    <li className="active"><a href="#home"><HomeIcon size={18} /> Overview</a></li>
+                    <li><a href="#features"><Zap size={18} /> Features</a></li>
+                    <li><Link to="/servers"><Settings size={18} /> Server Setup</Link></li>
+                    <li><a href="#docs"><BookOpen size={18} /> Documentation</a></li>
+                    <li><a href="https://discord.gg/qdP5WemFfd" target="_blank" rel="noreferrer"><LifeBuoy size={18} /> Support</a></li>
                 </ul>
-                <hr className="neon-divider" style={{ margin: '2rem 0', opacity: 0.1 }} />
+
                 <div className="side-label">QUICK ACCESS</div>
                 <ul className="side-links">
-                    <li><Link to="/servers" className="ignition-target"><SettingsIcon size={18} /> Dashboard</Link></li>
-                    <li><a href={inviteLink} target="_blank" rel="noreferrer" className="ignition-target"><PlusCircle size={18} /> Invite Scribe</a></li>
+                    <li><Link to="/servers"><LayoutDashboard size={18} /> Dashboard</Link></li>
+                    <li><a href={inviteLink} target="_blank" rel="noreferrer"><UserPlus size={18} /> Add to Discord</a></li>
                 </ul>
             </aside>
 
+            {/* Main Content */}
             <main className="main-wrapper">
+                
                 {/* Hero Section */}
                 <section className="hero" id="home">
                     <div className="hero-glow"></div>
-                    <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-                        <div className="hero-content">
-                            <div className="hero-badge animate-pulse">IDENTITY VERIFIED • CORE SANCTUM</div>
-                            <h1 className="hero-title">CHOOSE YOUR <span className="accent-text">REALM</span></h1>
-                            <p className="hero-subtitle">The ultimate hunter productivity engine. Automate your dungeon progress, track focus rituals, and manifest glory in your Discord sanctuary.</p>
-                            <div className="hero-btns">
-                                <Link to="/servers" className="btn btn-primary ignition-target">
-                                    <Zap size={18} /> OPEN DASHBOARD
-                                </Link>
-                                <a href={inviteLink} target="_blank" rel="noreferrer" className="btn btn-outline ignition-target">
-                                    <Plus size={18} /> INVITE BOT
-                                </a>
-                            </div>
+                    <div className="hero-content">
+                        <div className="hero-badge">IDENTITY VERIFIED • CORE SYSTEM</div>
+                        <h1 className="hero-title">Build Your <span className="accent-text">Study System</span> in Discord</h1>
+                        <p className="hero-subtitle">Create and manage voice channels, run Pomodoro sessions, earn XP, and automate your server with a powerful productivity system.</p>
+                        <div className="hero-btns">
+                            <Link to="/servers" className="btn btn-primary">
+                                <LayoutDashboard size={18} /> Open Dashboard
+                            </Link>
+                            <a href={inviteLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                                <UserPlus size={18} /> Add to Discord
+                            </a>
                         </div>
                     </div>
                 </section>
 
-                {/* Features */}
+                {/* Features Section */}
                 <section className="features" id="features">
                     <div className="container">
                         <div className="section-header">
-                            <h2 className="section-title">CORE <span className="accent-text">NODES</span></h2>
+                            <h2 className="section-title">Core <span className="accent-text">Features</span></h2>
                             <div className="section-line"></div>
                         </div>
                         <div className="features-grid">
                             <div className="feature-card">
-                                <div className="card-icon blue-fire"><Server size={32} /></div>
-                                <h3>Server Management</h3>
-                                <p>Manifest temporary dungeons and voice sanctuaries with a single join.</p>
+                                <div className="card-icon"><Mic size={28} /></div>
+                                <h3>Voice Channel System</h3>
+                                <p>Create temporary voice channels automatically. Rename, lock, limit, and control access in real time.</p>
                             </div>
                             <div className="feature-card">
-                                <div className="card-icon blue-fire"><Timer size={32} /></div>
+                                <div className="card-icon"><Clock size={28} /></div>
                                 <h3>Automation Engine</h3>
-                                <p>Pomodoro HUDs that react to hunter presence with surgical precision.</p>
+                                <p>Start Pomodoro sessions that sync across users in voice channels.</p>
                             </div>
                             <div className="feature-card">
-                                <div className="card-icon blue-fire"><ShieldCheck size={32} /></div>
-                                <h3>Hardened Security</h3>
-                                <p>Fail-closed logic protocols that protect your focus from intruders.</p>
+                                <div className="card-icon"><TrendingUp size={28} /></div>
+                                <h3>XP & Role Rewards</h3>
+                                <p>Earn XP through activity and unlock roles automatically.</p>
                             </div>
                             <div className="feature-card">
-                                <div className="card-icon blue-fire"><BarChart3 size={32} /></div>
-                                <h3>Hunter Analytics</h3>
-                                <p>Deep-trace statistics and XP progression paths for every survivor.</p>
+                                <div className="card-icon"><BarChart3 size={28} /></div>
+                                <h3>Leaderboard System</h3>
+                                <p>Track daily, weekly, and monthly rankings with automatic resets.</p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Path of the Hunter */}
-                <section className="how-it-works" id="setup">
-                    <div className="container">
-                        <div className="path-grid">
-                            <div className="path-content">
-                                <h2 className="section-title text-left">PATH OF THE <span className="accent-text">HUNTER</span></h2>
-                                <p>Manifesting Scribe into your guild is a three-step ritual.</p>
-                                
-                                <div className="steps-list">
-                                    {steps.map((step, idx) => (
+                {/* Command Interface */}
+                <section className="commands" id="docs">
+                    <div className="container" style={{ maxWidth: '1000px' }}>
+                        <div className="command-interface">
+                            <div className="command-sidebar">
+                                <div className="cmd-sidebar-header">COMMAND LIST</div>
+                                <div className="cmd-list">
+                                    {commandsData.map(cmd => (
                                         <div 
-                                            key={idx} 
-                                            className={`step-item ${activeStep === idx ? 'active' : ''}`}
-                                            onMouseEnter={() => setActiveStep(idx)}
-                                            onClick={() => setActiveStep(idx)}
+                                            key={cmd.id} 
+                                            className={`cmd-item ${activeCommand === cmd.id ? 'active' : ''}`}
+                                            onClick={() => setActiveCommand(cmd.id)}
                                         >
-                                            <div className="step-num">{String(idx + 1).padStart(2, '0')}</div>
-                                            <div className="step-desc">
-                                                <h4>{step.title}</h4>
-                                                <p>{step.desc}</p>
-                                            </div>
+                                            <span className="cmd-item-name">{cmd.name}</span>
+                                            <span className="cmd-item-desc">{cmd.desc}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="path-visual">
-                                <div className="mockup-frame">
-                                    <div className="mockup-header">
-                                        <div className="mockup-dots"><span></span><span></span><span></span></div>
-                                        <div className="mockup-url">SCRIBE_COMMAND_CENTER_LIVE</div>
+                            <div className="command-preview">
+                                <AnimateMockup key={activeCommand}>
+                                    {renderMockup()}
+                                </AnimateMockup>
+                                
+                                {activeCmdData && (
+                                    <div className="preview-info">
+                                        <div className="preview-info-row">Type: <span>{activeCmdData.type}</span></div>
+                                        <div className="preview-info-row">Cooldown: <span>{activeCmdData.cooldown}</span></div>
+                                        <div className="preview-info-row">Permissions: <span>{activeCmdData.perms}</span></div>
                                     </div>
-                                    <div className="mockup-image-container" style={{ position: 'relative', overflow: 'hidden', height: '300px' }}>
-                                        <AnimatePresence mode="wait">
-                                            <motion.img 
-                                                key={activeStep}
-                                                src={steps[activeStep].img} 
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.4 }}
-                                                className="setup-mockup-img" 
-                                                alt={`Step ${activeStep + 1}`} 
-                                                style={{ position:'absolute', width:'100%', height:'100%', objectFit:'cover' }}
-                                            />
-                                        </AnimatePresence>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Command Compendium */}
-                <section className="commands" id="docs">
-                    <div className="container">
-                        <div className="archive-node">
-                            <div className="archive-sidebar">
-                                <div className="sidebar-header">BOT COMMANDS</div>
-                                <ul className="sidebar-menu">
-                                    {Object.keys(terminalLines).map(key => (
-                                        <li 
-                                            key={key} 
-                                            className={activeCommand === key ? 'active' : ''}
-                                            onClick={() => setActiveCommand(key)}
-                                        >
-                                            {key}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="archive-main">
-                                <div className="terminal-header" style={{ padding:'1rem 2rem', background:'#0a1024', borderBottom:'1px solid rgba(59,130,246,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                                    <span className="terminal-label" style={{ fontFamily:'JetBrains Mono, monospace', fontSize:'0.7rem', color: '#00d4ff' }}>MANIFEST_NODE_01</span>
-                                    <Terminal size={14} style={{ color: '#00d4ff' }} />
-                                </div>
-                                <div className="terminal-content">
-                                    <div className="terminal-line"><span className="cmd" style={{ color: '#3b82f6' }}>{terminalLines[activeCommand].cmd}</span></div>
-                                    <div className="terminal-response" style={{ color: '#8892b0' }}>{terminalLines[activeCommand].resp}</div>
-                                </div>
-                            </div>
+                <footer className="footer">
+                    <div className="footer-content">
+                        <div className="logo" style={{ fontSize: '1.25rem' }}>
+                            <Shield className="logo-icon" size={20} />
+                            <span>SCRIBE</span>
                         </div>
-                    </div>
-                </section>
-
-                {/* Footer */}
-                <footer className="footer" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="container">
-                        <div className="footer-grid">
-                            <div className="footer-brand">
-                                <div className="logo" style={{ color:'#fff', marginBottom:'1.5rem', fontWeight: 900, fontSize: '1.5rem' }}>SCRIBE</div>
-                                <p style={{ color:'#8892b0', maxWidth:'300px' }}>The ultimate hunters sanctuary engine. Unleash your focus 2026.</p>
-                            </div>
-                            <div className="footer-links">
-                                <h4 style={{ color: '#fff', marginBottom: '1.5rem' }}>SYSTEM</h4>
-                                <a href="#features">Features</a>
-                                <a href="#docs">Docs</a>
-                                <Link to="/servers">Dashboard</Link>
-                            </div>
-                            <div className="footer-links">
-                                <h4 style={{ color: '#fff', marginBottom: '1.5rem' }}>EXTERN</h4>
-                                <Link to="/privacy">Privacy Policy</Link>
-                                <Link to="/terms">Terms of Service</Link>
-                                <a href="https://discord.gg/qdP5WemFfd" target="_blank" rel="noreferrer">Support Signal</a>
-                            </div>
-                        </div>
-                        <div className="footer-bottom" style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4rem', display: 'flex', justifyContent: 'space-between' }}>
-                            <p>© 2026 MHK-123. ALL RIGHTS RESERVED • CORE SANCTUM V2</p>
-                            <div className="footer-social" style={{ display: 'flex', gap: '1.5rem' }}>
-                                <a href="https://discord.gg/qdP5WemFfd" style={{ color: '#465070' }}><MessageSquare size={18} /></a>
-                                <a href="https://github.com/MHK-123/Scribe" target="_blank" rel="noreferrer" style={{ color: '#465070' }}><Github size={18} /></a>
-                            </div>
-                        </div>
+                        <div className="footer-copy">© 2026 MHK-123. ALL RIGHTS RESERVED</div>
                     </div>
                 </footer>
+                
             </main>
         </div>
     );
 }
+
+// Simple wrapper for animation logic without relying entirely on framer component imports directly replacing Home components
+const AnimateMockup = ({ children }) => {
+    return (
+        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+            <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+            {children}
+        </div>
+    );
+};
