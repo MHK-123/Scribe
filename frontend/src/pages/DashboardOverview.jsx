@@ -2,394 +2,264 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
-import { Activity, Users, Mic, Clock, BarChart3, ShieldCheck, Zap, Lock, Unlock, Server, Sparkles } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { motion } from 'framer-motion';
+import { Users, Clock, Zap, Activity, Sparkles, TrendingUp, Target, Shield, Sword, Flame } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { io } from 'socket.io-client';
+
+import MagicPanel from '../components/MagicPanel.jsx';
+import DungeonButton from '../components/DungeonButton.jsx';
 
 export default function DashboardOverview() {
   const { id } = useParams();
-  const authContext = useContext(AuthContext);
-  const token = authContext?.token || '';
-  const apiUrl = authContext?.apiUrl || '';
-  
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // --- Real State ---
-  const [realStats, setRealStats] = useState(null);
-  const [realChart, setRealChart] = useState(null);
-
-  // --- Fallback / Mock Data Constants ---
-  const MOCK_STATS = {
-      activeVoiceChannels: 3,
-      usersStudying: 12,
-      activePomodoros: 2,
-      xpToday: 540
-  };
-
-  const MOCK_CHART = [
-      { name: "10:00", users: 2 },
-      { name: "10:30", users: 5 },
-      { name: "11:00", users: 8 },
-      { name: "11:30", users: 6 },
-      { name: "12:00", users: 10 }
-  ];
-
-  const MOCK_INSIGHTS = {
-      peakTime: "11:00 AM - 12:00 PM",
-      topChannel: "Deep Work Hub",
-      avgDuration: "2h 15m"
-  };
-
-  const MOCK_ACTIVITY = [
-      { id: 'm1', type: 'join', text: 'Alex joined Deep Work Hub', time: '1m ago' },
-      { id: 'm2', type: 'pomodoro', text: 'Pomodoro sequence initiated', time: '5m ago' },
-      { id: 'm3', type: 'create', text: 'New sanctuary manifested: Focus VC', time: '12m ago' },
-      { id: 'm4', type: 'leave', text: 'Hunter left session', time: '15m ago' }
-  ];
-
-  const MOCK_CHANNELS = [
-      { id: 101, name: "Deep Work Hub", users: 8, status: "Locked", isLocked: true, isPomodoro: false },
-      { id: 102, name: "Study Room Alpha", users: 4, status: "Active Session", isLocked: false, isPomodoro: false },
-      { id: 103, name: "Focus VC", users: 2, status: "Focusing", isLocked: false, isPomodoro: true }
-  ];
-
-  const [liveActivity, setLiveActivity] = useState([]);
-  const [activeChannels, setActiveChannels] = useState([]);
+  const { token, apiUrl } = useContext(AuthContext);
+  const [stats, setStats]         = useState(null);
+  const [progress, setProgress]   = useState({ level: 0, total_xp: 0, total_study_hours: 0 });
+  const [nextReward, setNextReward] = useState(null);
+  const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
-    if (!id || !apiUrl) {
-       setIsLoading(false);
-       return;
-    }
+    // Strictly clear all component state caches on server switch to prevent phantom data leaks
+    setStats(null);
+    setProgress({ level: 0, total_xp: 0, total_study_hours: 0 });
+    setNextReward(null);
+    setChartData([]);
 
     const headers = { Authorization: `Bearer ${token}` };
-    
-    // Fetch stats
-    axios.get(`${apiUrl}/guilds/${id}/stats`, { headers })
-      .then(res => {
-         const data = res?.data || {};
-         // Only set real stats if the backend actually returns something greater than 0
-         const hasRealData = data?.activeVoiceChannels > 0 || data?.usersStudying > 0 || data?.xpToday > 0;
-         if (hasRealData) {
-             setRealStats({
-                 activeVoiceChannels: Number(data?.activeVoiceChannels) || 0,
-                 usersStudying: Number(data?.usersStudying) || 0,
-                 activePomodoros: Number(data?.activePomodoros) || 0,
-                 xpToday: Number(data?.xpToday) || 0
-             });
-         }
-      })
-      .catch(err => console.error('Failed to load stats:', err));
+    Promise.all([
+      axios.get(`${apiUrl}/guilds/${id}/stats`,         { headers }),
+      axios.get(`${apiUrl}/guilds/${id}/user-progress`, { headers }),
+      axios.get(`${apiUrl}/settings/rewards/${id}`,     { headers }),
+      axios.get(`${apiUrl}/guilds/${id}/weekly-hours`,  { headers }),
+    ]).then(([statsRes, progRes, rewRes, chartRes]) => {
+      setStats(statsRes.data || {});
+      setProgress(progRes.data || { level: 0, total_xp: 0, total_study_hours: 0 });
+      setChartData(Array.isArray(chartRes.data) ? chartRes.data : []);
+      
+      const upcoming = Array.isArray(rewRes.data) 
+         ? rewRes.data.find(r => parseFloat(r.required_hours) > parseFloat(progRes.data?.total_study_hours || 0)) 
+         : null;
+      setNextReward(upcoming);
+    }).catch(err => {
+      console.error('Failed to load dashboard data:', err);
+      // Fallback empty data so it doesn't crash the white screen
+      setStats({ activeVoiceChannels: 0, usersStudying: 0, totalHoursToday: 0 });
+      setProgress({ level: 0, total_xp: 0, total_study_hours: 0 });
+      setChartData([]);
+    });
 
-    // Fetch chart
-    axios.get(`${apiUrl}/guilds/${id}/weekly-hours`, { headers })
-      .then(res => {
-         if (Array.isArray(res?.data) && res.data.length > 0) {
-             const formattedData = res.data.map((d, i) => ({
-                 name: d?.name || `T${i}`,
-                 users: Number(d?.users || d?.hours || 0)
-             }));
-             // Check if real chart has any non-zero data
-             if (formattedData.some(d => d.users > 0)) {
-                 setRealChart(formattedData);
-             }
-         }
-      })
-      .catch(err => console.error('Failed to load chart data:', err))
-      .finally(() => setIsLoading(false));
-
-    // Socket real-time updates safely
-    let socket;
-    try {
-        socket = io(apiUrl);
-        socket.emit('join_guild_room', id);
-        
-        socket.on('vc_created', () => {
-           setRealStats(s => s ? { ...s, activeVoiceChannels: (s.activeVoiceChannels || 0) + 1 } : null);
-           addLiveActivity('create', 'New VC created');
-        });
-        socket.on('vc_deleted', () => {
-           setRealStats(s => s ? { ...s, activeVoiceChannels: Math.max(0, (s.activeVoiceChannels || 0) - 1) } : null);
-        });
-    } catch (e) {
-        console.warn("Socket initialization skipped", e);
-    }
+    // Socket real-time updates
+    const socket = io(apiUrl);
+    socket.emit('join_guild_room', id);
     
-    return () => {
-        if (socket) socket.disconnect();
-    };
+    socket.on('vc_created', (data) => {
+       setStats(s => s ? { ...s, activeVoiceChannels: s.activeVoiceChannels + 1 } : s);
+    });
+    socket.on('vc_deleted', (data) => {
+       setStats(s => s ? { ...s, activeVoiceChannels: Math.max(0, s.activeVoiceChannels - 1) } : s);
+    });
+    socket.on('user_level_up', (data) => {
+       setProgress(p => p ? { ...p, level: data.level, total_xp: data.xp } : p);
+    });
+
+    return () => socket.disconnect();
   }, [id, apiUrl, token]);
 
-  const addLiveActivity = (type, text) => {
-      setLiveActivity(prev => {
-          const feed = prev || [];
-          const newFeed = [{ id: Date.now() + Math.random(), type, text, time: 'Just now' }, ...feed];
-          return newFeed.slice(0, 8); // Keep last 8
-      });
-  };
+  if (!stats) return (
+     <div className="space-y-6 animate-pulse p-4">
+        <div className="h-8 bg-white/5 rounded w-1/4 mb-8"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+           {[1,2,3,4].map(i => <div key={i} className="h-32 bg-white/5 rounded-2xl border border-white/5"></div>)}
+        </div>
+     </div>
+  );
 
-  const getStatusIcon = (type) => {
-      switch(type) {
-          case 'join': return <span style={{ color: '#22c55e' }}>+</span>;
-          case 'leave': return <span style={{ color: '#ef4444' }}>-</span>;
-          case 'pomodoro': return <span style={{ color: '#f59e0b' }}>+</span>;
-          case 'create': return <span style={{ color: '#3b82f6' }}>+</span>;
-          default: return <span style={{ color: '#fff' }}>•</span>;
-      }
-  };
+  const cards = [
+    { title: 'Active Chambers', value: stats.activeVoiceChannels, icon: <Activity className="text-blue-400 w-5 h-5"/>, glow: 'rgba(59,130,246,0.1)' },
+    { title: 'Hunters Engaged', value: stats.usersStudying || 0, icon: <Users className="text-purple-400 w-5 h-5"/>, glow: 'rgba(168,85,247,0.1)' },
+    { title: 'Mana Harvested', value: `${stats.totalHoursToday}h`, icon: <Flame className="text-orange-400 w-5 h-5"/>, glow: 'rgba(249,115,22,0.1)' },
+    { title: 'System Pulse', value: '24ms', icon: <Zap className="text-yellow-400 w-5 h-5"/>, glow: 'rgba(234,179,8,0.1)' }
+  ];
 
-  // --- Dynamic Resolution ---
-  // If demo mode is ON OR if we don't have real data, fallback to MOCK
-  const usingMockStats = isDemoMode || !realStats;
-  const usingMockChart = isDemoMode || !realChart;
-
-  const currentStats = usingMockStats ? MOCK_STATS : realStats;
-  const currentChart = usingMockChart ? MOCK_CHART : realChart;
-  
-  const currentInsights = usingMockStats ? MOCK_INSIGHTS : { peakTime: "--", topChannel: "--", avgDuration: "--" };
-  const currentActivity = (isDemoMode || liveActivity.length === 0) ? MOCK_ACTIVITY : liveActivity;
-  const currentChannels = (isDemoMode || activeChannels.length === 0) ? MOCK_CHANNELS : activeChannels;
-
-  const safeNum = (val) => Number(val) || 0;
-  const xpStr = safeNum(currentStats?.xpToday).toLocaleString();
-
-  if (isLoading) {
-      return (
-          <div style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', color: '#64748b' }}>
-              <Server size={40} color="#3b82f6" style={{ animation: 'pulse 2s infinite' }} />
-              <h2 style={{ fontSize: '1rem', letterSpacing: '0.1em' }}>INITIALIZING DASHBOARD...</h2>
-          </div>
-      );
-  }
+  const nextLvlXp = Math.pow(progress.level + 1, 2) * 100;
+  const currentLvlXp = Math.pow(progress.level, 2) * 100;
+  const xpProgressPercent = Math.min(100, Math.max(0, ((progress.total_xp - currentLvlXp) / (nextLvlXp - currentLvlXp)) * 100)) || 0;
 
   return (
-    <div style={{ padding: '2rem', fontFamily: '"Inter", sans-serif', color: '#f8fafc', background: 'transparent' }}>
-        
-        {/* Top Section */}
-        <div style={{ background: 'rgba(10, 15, 26, 0.8)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '1rem', padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', backdropFilter: 'blur(10px)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <Server size={20} color="#60a5fa" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Core System</span>
+    <div className="space-y-8 relative overflow-visible p-4">
+      <header className="flex flex-col gap-1">
+         <h1 className="text-4xl font-extrabold tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase">Sanctum Overview</h1>
+         <div className="flex items-center gap-2">
+            <div className="w-8 h-px bg-blue-500/50" />
+            <p className="text-slate-400 font-medium tracking-wide text-xs uppercase">Realm Identification: <span className="text-blue-400">{id}</span></p>
+         </div>
+      </header>
+
+      {/* Hero Progress Section */}
+      <MagicPanel className="p-8 border-blue-500/10" glowColor="rgba(59,130,246,0.1)">
+         <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-8">
+                <div className="relative flex items-center justify-center p-1 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-full shadow-[0_0_25px_rgba(59,130,246,0.3)]">
+                   <div className="bg-[#0a0a0f] rounded-full p-1">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                         <circle cx="48" cy="48" r="44" stroke="rgba(255,255,255,0.05)" strokeWidth="6" fill="transparent" />
+                         <motion.circle cx="48" cy="48" r="44" stroke="currentColor" strokeWidth="6" fill="transparent" 
+                            strokeDasharray="276" initial={{ strokeDashoffset: 276 }} animate={{ strokeDashoffset: 276 - (276 * xpProgressPercent) / 100 }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                            className="text-blue-500" strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                         <span className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em] -mb-1">Rank</span>
+                         <span className="text-3xl font-black">{progress.level}</span>
+                      </div>
+                   </div>
                 </div>
-                <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{ position: 'relative', display: 'flex', height: '10px', width: '10px' }}>
-                        <span style={{ animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite', position: 'absolute', display: 'inline-flex', height: '100%', width: '100%', borderRadius: '50%', backgroundColor: isDemoMode ? '#f59e0b' : '#22c55e', opacity: 0.75 }}></span>
-                        <span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: '10px', width: '10px', backgroundColor: isDemoMode ? '#f59e0b' : '#22c55e', boxShadow: `0 0 10px ${isDemoMode ? '#f59e0b' : '#22c55e'}` }}></span>
-                    </span>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>
-                        {isDemoMode ? 'DEMO MODE' : 'ONLINE / STABLE'}
-                    </span>
+
+                <div className="space-y-2">
+                   <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                      <Shield className="text-blue-500 w-5 h-5" />
+                      Hunter Progress
+                   </h3>
+                   <div className="flex flex-wrap gap-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                      <span className="flex items-center gap-1.5"><Sword size={12} className="text-slate-400"/> {progress.total_xp} / {nextLvlXp} Essence</span>
+                      <span className="flex items-center gap-1.5"><Clock size={12} className="text-slate-400"/> {parseFloat(progress.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
+                   </div>
+                   <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden border border-white/5">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${xpProgressPercent}%` }} transition={{ duration: 1 }} className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
+                   </div>
                 </div>
+            </div>
+
+            {nextReward && (
+               <div className="w-full lg:w-auto bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-4 relative group hover:border-orange-500/30 transition-all">
+                  <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all">
+                     <Target className="text-orange-400 w-6 h-6" />
+                  </div>
+                  <div>
+                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Upcoming Relic</p>
+                     <p className="font-bold text-white text-sm">
+                        Unlock at <span className="text-orange-400">{parseFloat(nextReward.required_hours)} hrs</span>
+                     </p>
+                  </div>
+               </div>
+            )}
+         </div>
+      </MagicPanel>
+      
+      {/* Metric Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+         {cards.map((card, idx) => (
+            <MagicPanel 
+               key={idx}
+               className="p-6 border-white/5"
+               glowColor={card.glow}
+            >
+               <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-slate-500 font-bold uppercase tracking-[0.15em] text-[10px]">{card.title}</h3>
+                  <div className="p-2 rounded-lg bg-white/5 border border-white/10 shadow-inner">
+                     {card.icon}
+                  </div>
+               </div>
+               
+               <div className="flex items-baseline gap-2">
+                  <motion.h2 
+                     key={card.value}
+                     initial={{ y: 10, opacity: 0 }}
+                     animate={{ y: 0, opacity: 1 }}
+                     className="text-4xl font-black text-white"
+                  >
+                     {card.value}
+                  </motion.h2>
+                  {idx === 0 && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]" />}
+               </div>
+            </MagicPanel>
+         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         
+         {/* Activity Chart */}
+         <MagicPanel className="lg:col-span-2 p-6 h-[320px] flex flex-col border-white/5" glowColor="rgba(59,130,246,0.03)">
+            <div className="flex justify-between items-center mb-4">
+               <h3 className="text-sm font-bold flex items-center gap-3 text-white">
+                  <Activity className="w-4 h-4 text-blue-500" />
+                  Mana Flux Pattern
+               </h3>
+               <div className="flex gap-2">
+                  <span className="text-[9px] font-bold px-2 py-0.5 bg-white/5 rounded-full border border-white/10 text-slate-500 uppercase tracking-tighter">Lunar Cycle</span>
+               </div>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Active Voice</span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{safeNum(currentStats?.activeVoiceChannels)}</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Total Users</span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{safeNum(currentStats?.usersStudying)}</span>
-                </div>
-                
-                {/* Demo Toggle Button */}
-                <button 
-                    onClick={() => setIsDemoMode(!isDemoMode)}
-                    style={{ 
-                        display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', 
-                        background: isDemoMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
-                        border: `1px solid ${isDemoMode ? '#f59e0b' : '#3b82f6'}`, 
-                        borderRadius: '0.5rem', color: '#fff', cursor: 'pointer', transition: 'all 0.2s',
-                        fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em'
-                    }}
-                >
-                    <Sparkles size={16} color={isDemoMode ? '#f59e0b' : '#60a5fa'} />
-                    {isDemoMode ? 'EXIT DEMO' : 'PREVIEW DEMO'}
-                </button>
+            <div className="flex-1 w-full h-full min-h-0">
+               <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                   <defs>
+                     <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                     </linearGradient>
+                   </defs>
+                   <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
+                   <YAxis stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                   <Tooltip 
+                     contentStyle={{ 
+                        backgroundColor: '#0a0a0f', 
+                        borderColor: 'rgba(255,255,255,0.05)', 
+                        borderRadius: '12px',
+                        boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                     }} 
+                   />
+                   <Area 
+                     type="monotone" 
+                     dataKey="hours" 
+                     stroke="#3b82f6" 
+                     strokeWidth={3} 
+                     fillOpacity={1} 
+                     fill="url(#colorHours)" 
+                     animationDuration={2000}
+                   />
+                 </AreaChart>
+               </ResponsiveContainer>
             </div>
-        </div>
+         </MagicPanel>
 
-        {/* Stats Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-            {/* Card 1 */}
-            <div className="system-card" style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem', transition: 'all 0.3s', cursor: 'default' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Voice Channels</span>
-                    <Mic size={18} color="#60a5fa" />
-                </div>
-                <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{safeNum(currentStats?.activeVoiceChannels)}</div>
-            </div>
-
-            {/* Card 2 */}
-            <div className="system-card" style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem', transition: 'all 0.3s', cursor: 'default' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Users in VC</span>
-                    <Users size={18} color="#60a5fa" />
-                </div>
-                <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{safeNum(currentStats?.usersStudying)}</div>
-            </div>
-
-            {/* Card 3 */}
-            <div className="system-card" style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem', transition: 'all 0.3s', cursor: 'default' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Pomodoros</span>
-                    <Clock size={18} color="#60a5fa" />
-                </div>
-                <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{safeNum(currentStats?.activePomodoros)}</div>
-            </div>
-
-            {/* Card 4 */}
-            <div className="system-card" style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem', transition: 'all 0.3s', cursor: 'default' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>XP Generated (Today)</span>
-                    <BarChart3 size={18} color="#60a5fa" />
-                </div>
-                <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{xpStr}</div>
-            </div>
-        </div>
-
-        {/* Dashboard Main Content Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
-            
-            {/* Main Graph (Left) */}
-            <div style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
-                    <Activity size={20} color="#60a5fa" />
-                    <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, letterSpacing: '0.05em' }}>VOICE ACTIVITY <span style={{ color: '#475569', fontSize: '0.8rem', marginLeft: '0.5rem' }}>(Live)</span></h2>
-                </div>
-                
-                <div style={{ flex: 1, minHeight: '280px', width: '100%' }}>
-                    {(currentChart && currentChart.length > 0) ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={currentChart} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="600" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
-                                <YAxis stroke="#475569" fontSize={11} fontWeight="600" tickLine={false} axisLine={false} />
-                                <Tooltip 
-                                    contentStyle={{ 
-                                        backgroundColor: 'rgba(10, 15, 25, 0.95)', 
-                                        borderColor: 'rgba(59, 130, 246, 0.3)', 
-                                        borderRadius: '8px',
-                                        color: '#fff',
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
-                                        boxShadow: '0 5px 15px rgba(0,0,0,0.5)'
-                                    }} 
-                                    cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                                />
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="users" 
-                                    stroke={isDemoMode ? "#f59e0b" : "#3b82f6"} 
-                                    strokeWidth={3}
-                                    dot={false}
-                                    activeDot={{ r: 6, fill: isDemoMode ? "#f59e0b" : "#3b82f6", stroke: '#fff', strokeWidth: 2 }}
-                                    animationDuration={2000}
-                                    style={{ filter: `drop-shadow(0px 0px 8px ${isDemoMode ? 'rgba(245, 158, 11, 0.5)' : 'rgba(59, 130, 246, 0.5)'})` }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#64748b' }}>
-                            <span style={{ fontSize: '0.9rem' }}>No activity data generated yet.</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Right Panel: Insights + Live Activity */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                
-                {/* Insights Panel */}
-                <div style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <ShieldCheck size={18} color="#60a5fa" />
-                        <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, letterSpacing: '0.05em' }}>INSIGHTS</h2>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Peak Activity Time</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>{currentInsights?.peakTime || '--'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Most Active VC</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>{currentInsights?.topChannel || '--'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Avg Session Duration</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>{currentInsights?.avgDuration || '--'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Live Activity Feed */}
-                <div style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                        <Zap size={18} color="#60a5fa" />
-                        <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, letterSpacing: '0.05em' }}>LIVE ACTIVITY</h2>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '200px', paddingRight: '0.5rem' }}>
-                        {(currentActivity || []).map((act) => (
-                            <div key={act?.id || Math.random()} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', animation: 'fadeIn 0.5s ease-out' }}>
-                                <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: '1rem', paddingTop: '2px' }}>
-                                    {getStatusIcon(act?.type)}
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 500 }}>{act?.text || 'Activity occurred'}</span>
-                                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{act?.time || 'Just now'}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {/* Active Voice Channels List */}
-        <div style={{ background: 'rgba(10, 15, 26, 0.6)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '1rem', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                <Activity size={20} color="#60a5fa" />
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Active Channels</h2>
+         {/* Oracle Panel */}
+         <MagicPanel className="p-6 border-blue-500/10 flex flex-col justify-between" glowColor="rgba(59,130,246,0.08)">
+            <div className="relative">
+               <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-[0_0_15_rgb(59,130,246,0.1)]">
+                     <Sparkles className="text-blue-500 w-5 h-5 shadow-inner" />
+                  </div>
+                  <h3 className="text-xl font-black text-white tracking-tight uppercase italic">Ancient Oracle</h3>
+               </div>
+               
+               <div className="space-y-4">
+                  <p className="text-slate-400 text-sm leading-relaxed font-medium">
+                     The mana cores resonate with intense frequency. Here is my prophecy:
+                  </p>
+                  
+                  <div className="bg-black/40 border border-white/5 p-4 rounded-xl shadow-inner relative overflow-hidden group">
+                     <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
+                     <p className="text-white leading-relaxed text-sm font-medium pl-2 italic">
+                        Harvest peaks during <span className="text-blue-400 font-bold underline">Lunar Noon</span>. 
+                        Fellow hunters harvested <span className="text-blue-400 font-bold">20% more essence</span> this cycle. 
+                        Summon a group expedition to maximize mana gain!
+                     </p>
+                  </div>
+               </div>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {(currentChannels && currentChannels.length > 0) ? currentChannels.map(vc => (
-                    <div key={vc?.id || Math.random()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '0.5rem', transition: 'background 0.2s' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    {vc?.name || 'Unknown Channel'}
-                                </span>
-                                <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}>
-                                    <Users size={12} /> {safeNum(vc?.users)} users
-                                </span>
-                            </div>
-                        </div>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 600, padding: '0.25rem 0.75rem', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em',
-                                background: vc?.isLocked ? 'rgba(239, 68, 68, 0.1)' : (vc?.isPomodoro ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.1)'),
-                                color: vc?.isLocked ? '#ef4444' : (vc?.isPomodoro ? '#f59e0b' : '#22c55e')
-                            }}>
-                                {vc?.status || 'Active'}
-                            </span>
-                            
-                            <div style={{ color: '#64748b' }}>
-                                {vc?.isLocked ? <Lock size={16} /> : (vc?.isPomodoro ? <Clock size={16} /> : <Unlock size={16} />)}
-                            </div>
-                        </div>
-                    </div>
-                )) : (
-                    <div style={{ color: '#64748b', fontSize: '0.9rem', padding: '1rem' }}>No active channels found.</div>
-                )}
+            <div className="mt-8">
+               <DungeonButton variant="fire" className="w-full justify-center" icon={Sparkles}>
+                  Consult Full Prophecy
+               </DungeonButton>
             </div>
-        </div>
+         </MagicPanel>
+         
+      </div>
     </div>
   );
 }
-
