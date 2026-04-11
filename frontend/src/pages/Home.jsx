@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, PanelLeft, Zap, Settings, BookOpen, LifeBuoy, 
-  LayoutDashboard, UserPlus, Mic, Clock, TrendingUp, BarChart3,
-  Home as HomeIcon, Lock
+  LayoutDashboard, UserPlus, Link as LinkIcon, Volume2
 } from 'lucide-react';
 import '../styles/theme-landing.css';
 
@@ -15,98 +14,184 @@ export default function Home() {
 
     // --- Command Interface Logic & Mockups ---
     const commandsData = [
-        { id: '-help', name: '-help', desc: 'Display global system status and loaded protocols', type: 'Slash Command', cooldown: '5s', perms: 'User' },
+        { id: '-help', name: '-help', desc: 'Display global system status and loaded protocols', type: 'Legacy Prefix', cooldown: '5s', perms: 'User' },
         { id: '-m', name: '-m (Profile)', desc: 'Fetch hunter profile card and XP progression', type: 'Legacy Prefix', cooldown: '10s', perms: 'User' },
         { id: '-l', name: '-l (Leaderboard)', desc: 'Global rankings based on focus hours', type: 'Legacy Prefix', cooldown: '15s', perms: 'User' },
-        { id: '/pomodoro-create', name: '/pomodoro-create', desc: 'Manifest focus engine in current voice sanctuary', type: 'Slash Command', cooldown: '10s', perms: 'User' },
-        { id: '/vc-lock', name: '/vc-lock', desc: 'Seal the portal to protect from intruders', type: 'Slash Command', cooldown: '5s', perms: 'Admin' }
+        { id: 'slash-menu', name: 'Slash Commands', desc: 'Control your sanctuary with built-in voice commands', type: 'Slash Command', cooldown: '3s', perms: 'User/Admin' },
     ];
+
+    const BotMessageContainer = ({ children, commandText }) => (
+        <div className="discord-message">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                {commandText && (
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <img className="discord-avatar" src="https://ui-avatars.com/api/?name=Horse&background=1e293b&color=fff" alt="User" />
+                        <div>
+                            <div className="discord-msg-header">
+                                <span className="discord-author">Horse</span>
+                            </div>
+                            <div className="discord-msg-text">{commandText}</div>
+                        </div>
+                    </div>
+                )}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'radial-gradient(circle at center, #1e40af 0%, #000 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px #3b82f6', flexShrink: 0 }}>
+                        <Volume2 size={24} color="#60a5fa" />
+                    </div>
+                    <div className="discord-msg-content">
+                        <div className="discord-msg-header">
+                            <span className="discord-author" style={{ color: '#60a5fa' }}>Scribe</span>
+                            <span className="discord-bot-tag">✓ APP</span>
+                            <span className="discord-timestamp">Today at 9:25 PM</span>
+                        </div>
+                        {children}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
     const renderMockup = () => {
         switch(activeCommand) {
             case '-help': return (
-                <div className="mockup-container">
-                    <div className="mockup-header">
-                        <LayoutDashboard size={20} />
-                        <span>SYSTEM STATUS</span>
+                <BotMessageContainer>
+                    <div className="discord-embed">
+                        <div className="discord-embed-title">SYSTEM COMMANDS</div>
+                        
+                        <div className="discord-category">[ COMMAND DIRECTORY ]</div>
+                        <pre className="discord-mono-block">
+{`-help    :: Displays this system manual
+-l       :: Displays the top hunters leaderboard
+-m       :: Displays your personal statistics`}
+                        </pre>
+
+                        <div className="discord-category">[ VOICE / POMODORO DIRECTORY ]</div>
+                        <pre className="discord-mono-block">
+{`/vc-rename :: Renames your current voice channel
+/vc-limit  :: Sets the member limit for your dungeon
+/vc-lock   :: Locks your channel (private ritual)
+/vc-unlock :: Unlocks your channel for hunters
+/vc-invite :: Summons a hunter to your sanctuary
+/pomodoro-create :: Manifest focus engine in current VC`}
+                        </pre>
+
+                        <div className="discord-category">[ CONFIGURATION HUB ]</div>
+                        <pre className="discord-mono-block">
+{`/config    :: Access core calibration (Web Dashboard)`}
+                        </pre>
+
+                        <div style={{ marginTop: '1rem' }}>
+                            <a href="#" className="discord-link"><LinkIcon size={16}/> Scribe Dashboard</a>
+                        </div>
                     </div>
-                    <div className="mockup-stat-grid">
-                        <div className="stat-box">
-                            <div className="stat-val">124</div>
-                            <div className="stat-label">Active Users</div>
-                        </div>
-                        <div className="stat-box">
-                            <div className="stat-val">32</div>
-                            <div className="stat-label">Active Sessions</div>
-                        </div>
-                        <div className="stat-box">
-                            <div className="stat-val">18</div>
-                            <div className="stat-label">Commands Loaded</div>
-                        </div>
-                    </div>
-                </div>
+                </BotMessageContainer>
             );
             case '-m': return (
-                <div className="mockup-container">
-                    <div className="mockup-header">
-                        <Shield size={20} />
-                        <span>HUNTER PROFILE</span>
-                    </div>
-                    <div className="profile-mockup">
-                        <div className="profile-avatar"></div>
-                        <div className="profile-info">
-                            <div className="profile-name">ShadowMonarch</div>
-                            <div className="profile-rank">Rank: S-Class Hunter</div>
-                            <div className="xp-bar-bg">
-                                <div className="xp-bar-fill"></div>
+                <BotMessageContainer commandText="-m">
+                    <div className="discord-embed discord-embed-relative">
+                        <div className="discord-embed-author">
+                            <img src="https://ui-avatars.com/api/?name=H&background=333&color=fff" alt="Avatar"/>
+                            hussain.mhk (Hunter Identity)
+                        </div>
+                        <img className="discord-embed-thumbnail" src="https://ui-avatars.com/api/?name=Horse&background=1e293b&color=fff" alt="Thumb"/>
+                        
+                        <div className="discord-embed-title" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>PLAYER CARD</div>
+                        
+                        <div className="discord-embed-field">
+                            <div><strong style={{ color: '#fff' }}>Status:</strong> Verified</div>
+                            <div><strong style={{ color: '#fff' }}>Identity:</strong> <span className="discord-mention">@Horse</span></div>
+                        </div>
+
+                        <div className="discord-embed-fields">
+                            <div className="discord-embed-field">
+                                <div className="discord-embed-field-title">LEVEL</div>
+                                <div className="discord-embed-field-inline">5</div>
                             </div>
-                            <div className="xp-text">
-                                <span>Level 42</span>
-                                <span>8,450 / 10,000 XP</span>
+                            <div className="discord-embed-field">
+                                <div className="discord-embed-field-title">TOTAL TIME</div>
+                                <div className="discord-embed-field-inline">5.6h</div>
+                            </div>
+                            <div className="discord-embed-field">
+                                <div className="discord-embed-field-title">TOTAL XP</div>
+                                <div className="discord-embed-field-inline">3280</div>
                             </div>
                         </div>
+
+                        <img className="discord-embed-image" src="https://images.unsplash.com/photo-1547394765-185e1e68f34e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Setup" style={{ filter: 'brightness(0.8) contrast(1.2) saturate(1.2)' }} />
                     </div>
-                </div>
+                </BotMessageContainer>
             );
             case '-l': return (
-                <div className="mockup-container">
-                    <div className="mockup-header">
-                        <BarChart3 size={20} />
-                        <span>GLOBAL LEADERBOARD</span>
+                <BotMessageContainer commandText="-l">
+                    <div className="discord-embed">
+                        <div className="discord-embed-title">RANKING: TOP HUNTERS</div>
+                        <div className="discord-embed-desc" style={{ marginBottom: '1rem', color: '#dbdee1' }}>Top hunters by focus time.</div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 100px', gap: '0.5rem', alignItems: 'center' }}>
+                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>Rank</div>
+                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>Hunter</div>
+                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem', textAlign: 'right' }}>Level | Time</div>
+
+                            <div style={{ color: '#facc15', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#1</div>
+                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Horse</span></div>
+                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 5 | 5.6h</div>
+
+                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#2</div>
+                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@i get no huzz</span></div>
+                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 3 | 2.6h</div>
+
+                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#3</div>
+                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Lisipisi Chan UwU</span></div>
+                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 2 | 0.8h</div>
+
+                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#4</div>
+                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Shaun The Sheep</span></div>
+                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 1 | 0.2h</div>
+
+                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#5</div>
+                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Avi</span></div>
+                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 1 | 0.2h</div>
+                        </div>
                     </div>
-                    <div>
-                        <div className="lb-row">
-                            <span className="lb-rank">1</span>
-                            <span className="lb-name">UserA</span>
-                            <span className="lb-xp">1240 XP</span>
-                        </div>
-                        <div className="lb-row">
-                            <span className="lb-rank">2</span>
-                            <span className="lb-name">UserB</span>
-                            <span className="lb-xp">980 XP</span>
-                        </div>
-                        <div className="lb-row">
-                            <span className="lb-rank">3</span>
-                            <span className="lb-name">UserC</span>
-                            <span className="lb-xp">870 XP</span>
-                        </div>
-                    </div>
-                </div>
+                </BotMessageContainer>
             );
-            case '/pomodoro-create': return (
-                <div className="mockup-container timer-mockup" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
-                    <div className="timer-circle">
-                        <div className="timer-time">25:00</div>
+            case 'slash-menu': return (
+                <div className="slash-menu-mockup">
+                    <div className="slash-item">
+                        <div className="slash-icon-wrap"><Volume2 size={18} /></div>
+                        <div className="slash-texts">
+                            <span className="slash-cmd">/vc-invite</span>
+                            <span className="slash-desc">Send a styled invite to a hunter in DMs</span>
+                        </div>
                     </div>
-                    <div className="timer-status typing-anim">STATUS: FOCUS MODE</div>
-                </div>
-            );
-            case '/vc-lock': return (
-                <div className="mockup-container lock-mockup" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
-                    <div className="lock-icon-wrapper">
-                        <Lock size={48} />
+                    <div className="slash-item">
+                        <div className="slash-icon-wrap"><Volume2 size={18} /></div>
+                        <div className="slash-texts">
+                            <span className="slash-cmd">/vc-limit</span>
+                            <span className="slash-desc">Set member limit for your temp voice channel</span>
+                        </div>
                     </div>
-                    <div className="lock-text">Channel Secured</div>
+                    <div className="slash-item active">
+                        <div className="slash-icon-wrap" style={{ background: '#3b82f6', color: '#fff', boxShadow: '0 0 15px #3b82f6' }}><Volume2 size={18} /></div>
+                        <div className="slash-texts">
+                            <span className="slash-cmd">/vc-lock</span>
+                            <span className="slash-desc" style={{ color: '#cbd5e1' }}>Lock your temp voice channel</span>
+                        </div>
+                    </div>
+                    <div className="slash-item">
+                        <div className="slash-icon-wrap"><Volume2 size={18} /></div>
+                        <div className="slash-texts">
+                            <span className="slash-cmd">/vc-rename</span>
+                            <span className="slash-desc">Rename your temp voice channel</span>
+                        </div>
+                    </div>
+                    <div className="slash-item">
+                        <div className="slash-icon-wrap"><Volume2 size={18} /></div>
+                        <div className="slash-texts">
+                            <span className="slash-cmd">/vc-unlock</span>
+                            <span className="slash-desc">Unlock your temp voice channel</span>
+                        </div>
+                    </div>
                 </div>
             );
             default: return null;
@@ -189,7 +274,7 @@ export default function Home() {
                         </div>
                         <div className="features-grid">
                             <div className="feature-card">
-                                <div className="card-icon"><Mic size={28} /></div>
+                                <div className="card-icon"><Volume2 size={28} /></div>
                                 <h3>Voice Channel System</h3>
                                 <p>Create temporary voice channels automatically. Rename, lock, limit, and control access in real time.</p>
                             </div>
@@ -199,12 +284,12 @@ export default function Home() {
                                 <p>Start Pomodoro sessions that sync across users in voice channels.</p>
                             </div>
                             <div className="feature-card">
-                                <div className="card-icon"><TrendingUp size={28} /></div>
+                                <div className="card-icon"><Zap size={28} /></div>
                                 <h3>XP & Role Rewards</h3>
                                 <p>Earn XP through activity and unlock roles automatically.</p>
                             </div>
                             <div className="feature-card">
-                                <div className="card-icon"><BarChart3 size={28} /></div>
+                                <div className="card-icon"><LayoutDashboard size={28} /></div>
                                 <h3>Leaderboard System</h3>
                                 <p>Track daily, weekly, and monthly rankings with automatic resets.</p>
                             </div>
@@ -214,7 +299,7 @@ export default function Home() {
 
                 {/* Command Interface */}
                 <section className="commands" id="docs">
-                    <div className="container" style={{ maxWidth: '1000px' }}>
+                    <div className="container" style={{ maxWidth: '1100px' }}>
                         <div className="command-interface">
                             <div className="command-sidebar">
                                 <div className="cmd-sidebar-header">COMMAND LIST</div>
@@ -235,14 +320,6 @@ export default function Home() {
                                 <AnimateMockup key={activeCommand}>
                                     {renderMockup()}
                                 </AnimateMockup>
-                                
-                                {activeCmdData && (
-                                    <div className="preview-info">
-                                        <div className="preview-info-row">Type: <span>{activeCmdData.type}</span></div>
-                                        <div className="preview-info-row">Cooldown: <span>{activeCmdData.cooldown}</span></div>
-                                        <div className="preview-info-row">Permissions: <span>{activeCmdData.perms}</span></div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -250,11 +327,19 @@ export default function Home() {
 
                 <footer className="footer">
                     <div className="footer-content">
-                        <div className="logo" style={{ fontSize: '1.25rem' }}>
-                            <Shield className="logo-icon" size={20} />
-                            <span>SCRIBE</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="logo" style={{ fontSize: '1.25rem' }}>
+                                <Shield className="logo-icon" size={20} />
+                                <span>SCRIBE</span>
+                            </div>
+                            <div className="footer-copy">© 2026 MHK-123. ALL RIGHTS RESERVED</div>
                         </div>
-                        <div className="footer-copy">© 2026 MHK-123. ALL RIGHTS RESERVED</div>
+                        
+                        <div className="footer-links">
+                            <Link to="/terms">Terms of Service</Link>
+                            <Link to="/privacy">Privacy Policy</Link>
+                            <a href="https://discord.gg/qdP5WemFfd" target="_blank" rel="noreferrer">Support Signal</a>
+                        </div>
                     </div>
                 </footer>
                 
@@ -263,10 +348,9 @@ export default function Home() {
     );
 }
 
-// Simple wrapper for animation logic without relying entirely on framer component imports directly replacing Home components
 const AnimateMockup = ({ children }) => {
     return (
-        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+        <div style={{ animation: 'fadeIn 0.3s ease-out', width: '100%', display: 'flex', justifyContent: 'center' }}>
             <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
             {children}
         </div>
