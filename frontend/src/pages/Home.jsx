@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Shield, PanelLeft, Zap, Settings, BookOpen, LifeBuoy, 
-  LayoutDashboard, UserPlus, Link as LinkIcon, Volume2
+  LayoutDashboard, UserPlus, Link as LinkIcon, Volume2, Home as HomeIcon
 } from 'lucide-react';
 import '../styles/theme-landing.css';
 
