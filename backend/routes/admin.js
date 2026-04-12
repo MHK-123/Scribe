@@ -50,13 +50,31 @@ router.get('/guilds', async (req, res) => {
 
     // If bot has guilds, use them. Otherwise fall back to DB configs.
     if (botGuilds.length > 0) {
-      const merged = botGuilds.map(guild => ({
-        id: guild.id,
-        name: guild.name || 'Unknown Realm',
-        icon: guild.icon,
-        ownerId: guild.ownerId,
-        memberCount: guild.memberCount || 0,
-        config: configsMap[guild.id] || null
+      const merged = await Promise.all(botGuilds.map(async (guild) => {
+        const configRecord = configsMap[guild.id] || null;
+        let ownerId = configRecord?.owner_id || guild.ownerId; // Priority: DB -> Bot Cache
+
+        // Fallback ritual: If still unknown, scry the full metadata from Discord
+        if (!ownerId || ownerId === 'Unknown') {
+          const details = await discordService.getGuildDetails(guild.id);
+          if (details && details.owner_id) {
+            ownerId = details.owner_id;
+            // Record this finding in the ancient scrolls (DB)
+            await query(
+              'INSERT INTO guild_configs (guild_id, owner_id) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET owner_id = $2',
+              [guild.id, ownerId]
+            );
+          }
+        }
+
+        return {
+          id: guild.id,
+          name: guild.name || 'Unknown Realm',
+          icon: guild.icon,
+          ownerId: ownerId || 'Unknown',
+          memberCount: guild.memberCount || 0,
+          config: configRecord
+        };
       }));
       return res.json(merged);
     }

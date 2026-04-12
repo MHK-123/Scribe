@@ -114,6 +114,17 @@ class ScribeBot(commands.Bot):
         await self.change_presence(activity=activity)
         bot_logger.info(f"✅ [MANIFEST]: Sentinel '{self.user}' is online.")
 
+        # ─── Owner Sync Ritual (Backfill) ───
+        async with self.pool.acquire() as conn:
+            for guild in self.guilds:
+                await conn.execute('''
+                    INSERT INTO guild_configs (guild_id, owner_id) 
+                    VALUES ($1, $2) 
+                    ON CONFLICT (guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
+                    WHERE guild_configs.owner_id IS NULL
+                ''', str(guild.id), str(guild.owner_id))
+        bot_logger.info("⚔️ [PHASE]: Realm ownership reconciliation complete.")
+
     async def on_guild_join(self, guild: discord.Guild):
         """Universal Initialization Ritual: Manifests the guild config when summoned."""
         bot_logger.info(f"🔮 [SUMMON]: Sentinel has entered realm '{guild.name}' ({guild.id})")
@@ -122,10 +133,10 @@ class ScribeBot(commands.Bot):
         async with self.pool.acquire() as conn:
             # Main Guild Config
             await conn.execute('''
-                INSERT INTO guild_configs (guild_id) 
-                VALUES ($1) 
-                ON CONFLICT (guild_id) DO NOTHING
-            ''', str(guild.id))
+                INSERT INTO guild_configs (guild_id, owner_id) 
+                VALUES ($1, $2) 
+                ON CONFLICT (guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
+            ''', str(guild.id), str(guild.owner_id))
             
             # Default Pomodoro Config
             await conn.execute('''

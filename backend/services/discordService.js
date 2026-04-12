@@ -106,6 +106,37 @@ export const discordService = {
       }
     })();
 
+    activeRequests.set(cacheKey, requestPromise);
+    return requestPromise;
+  },
+
+  /**
+   * Fetch full guild metadata (Bot Token).
+   * Unlike /users/@me/guilds, this includes the 'owner_id' field.
+   */
+  getGuildDetails: async (guildId) => {
+    const cacheKey = `guild_details:${guildId}`;
+    const cached = await botCache.getUserGuilds(cacheKey); // Reusing user cache logic
+    if (cached) return cached;
+
+    if (activeRequests.has(cacheKey)) return activeRequests.get(cacheKey);
+
+    const requestPromise = (async () => {
+      try {
+        console.log(`📡 [DiscordService]: Scrying full metadata for guild ${guildId}...`);
+        const { data } = await discordClient.get(`/guilds/${guildId}`, {
+          headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
+        });
+        
+        await botCache.setUserGuilds(cacheKey, data); // Cache for 120s
+        return data;
+      } catch (err) {
+        console.error(`❌ [DiscordService]: Failed to scry realm ${guildId}:`, err.message);
+        return null;
+      } finally {
+        activeRequests.delete(cacheKey);
+      }
+    })();
 
     activeRequests.set(cacheKey, requestPromise);
     return requestPromise;

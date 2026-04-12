@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS guild_configs (
     id SERIAL PRIMARY KEY,
     guild_id VARCHAR(255) UNIQUE NOT NULL,
+    owner_id VARCHAR(255),
     join_to_create_channel VARCHAR(255),
     temp_vc_category VARCHAR(255),
     default_user_limit INT DEFAULT 0,
