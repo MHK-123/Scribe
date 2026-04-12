@@ -11,7 +11,58 @@
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        .initial-load {
+          position: fixed;
+          inset: 0;
+          background: #020205;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 20px;
+          z-index: 9999;
+          font-family: 'Rajdhani', sans-serif;
+          color: white;
+        }
+        .pulse-ring {
+          width: 60px;
+          height: 60px;
+          border: 2px solid #3b82f6;
+          border-radius: 50%;
+          animation: pulse 2s infinite;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .pulse-core {
+          width: 10px;
+          height: 10px;
+          background: #3b82f6;
+          border-radius: 50%;
+          box-shadow: 0 0 20px #3b82f6;
+        }
+        @keyframes pulse {
+          0% { transform: scale(0.8); opacity: 0.5; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+          50% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+          100% { transform: scale(0.8); opacity: 0.5; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .load-text {
+          font-weight: 700;
+          letter-spacing: 0.5em;
+          text-transform: uppercase;
+          font-size: 10px;
+          color: rgba(255,255,255,0.4);
+          animation: blink 1.5s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+      </style>
+      <div class="initial-load">
+        <div class="pulse-ring"><div class="pulse-core"></div></div>
+        <div class="load-text">Initializing Sanctum</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -6,7 +6,17 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  
+  // Safe localStorage retrieval
+  const [token, setToken] = useState(() => {
+    try {
+      return localStorage.getItem('token');
+    } catch (e) {
+      console.warn("🔐 [SENTINEL]: Storage Access Denied. Identity node restricted.");
+      return null;
+    }
+  });
+
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
 
@@ -57,7 +67,11 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (urlToken) {
-      localStorage.setItem('token', urlToken);
+      try {
+        localStorage.setItem('token', urlToken);
+      } catch (e) {
+        console.warn("🔐 [SENTINEL]: Storage Write Failure.");
+      }
       setToken(urlToken);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -85,7 +99,9 @@ export const AuthProvider = ({ children }) => {
       } catch (err) {
         console.warn("Token verification failed:", err.message);
         if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-          localStorage.removeItem('token');
+          try {
+            localStorage.removeItem('token');
+          } catch (e) {}
           setToken(null);
           setUser(null);
         }
@@ -101,7 +117,9 @@ export const AuthProvider = ({ children }) => {
   }, [token, api, isRateLimited, apiUrl]);
 
   const logout = () => {
-    localStorage.removeItem('token');
+    try {
+      localStorage.removeItem('token');
+    } catch (e) {}
     setToken(null);
     setUser(null);
     window.location.href = '/';

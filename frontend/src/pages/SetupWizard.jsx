@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Server, Mic, Timer, Heart, Zap, Shield, Plus, ArrowRight, ArrowLeft, 
-  CheckCircle2, AlertCircle, Save, FolderOpen, Hash, RefreshCw, Wand2, Link
+  CheckCircle2, AlertCircle, Save, FolderOpen, Hash, RefreshCw, Wand2, Link, Award
 } from 'lucide-react';
 import MagicPanel from '../components/MagicPanel.jsx';
 import DungeonButton from '../components/DungeonButton.jsx';
