@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import * as Lucide from 'lucide-react';
+import SetupWizard from './SetupWizard.jsx';
+import { motion, AnimatePresence } from 'framer-motion';
 import '../styles/theme-landing.css';
 
 // Safety wrapper to prevent index errors if an icon is missing in this version
@@ -11,10 +13,18 @@ const Icon = ({ name, size = 18, color = 'currentColor', className = '' }) => {
 
 export default function Home() {
     const [sidebarActive, setSidebarActive] = useState(false);
+    const [activeTab, setActiveTab] = useState('overview');
     
     useEffect(() => {
         setSidebarActive(window.innerWidth > 1024);
     }, []);
+
+    const handleTabChange = (tabId) => {
+        setActiveTab(tabId);
+        if (window.innerWidth <= 1024) {
+            setSidebarActive(false);
+        }
+    };
 
     const [activeCommand, setActiveCommand] = useState('-help');
     const inviteLink = "https://discord.com/api/oauth2/authorize?client_id=1488552752333455481&permissions=8&scope=bot%20applications.commands";
@@ -216,11 +226,27 @@ export default function Home() {
             <aside className={`side-nav ${sidebarActive ? 'active' : ''}`}>
                 <div className="side-label">INTERNAL NODES</div>
                 <ul className="side-links" style={{ marginBottom: '2rem' }}>
-                    <li className="active"><a href="#home"><Icon name="Home" size={18} /> Overview</a></li>
-                    <li><a href="#features"><Icon name="Zap" size={18} /> Features</a></li>
-                    <li><Link to="/setup"><Icon name="Settings" size={18} /> Server Setup</Link></li>
-                    <li><a href="#docs"><Icon name="BookOpen" size={18} /> Documentation</a></li>
-                    <li><a href="https://discord.gg/qdP5WemFfd" target="_blank" rel="noreferrer"><Icon name="LifeBuoy" size={18} /> Support</a></li>
+                    <li className={activeTab === 'overview' ? 'active' : ''}>
+                        <a href="#overview" onClick={(e) => { e.preventDefault(); handleTabChange('overview'); }}>
+                            <Icon name="Home" size={18} /> <span>Overview</span>
+                        </a>
+                    </li>
+                    <li className={activeTab === 'features' ? 'active' : ''}>
+                        <a href="#features" onClick={(e) => { e.preventDefault(); handleTabChange('features'); }}>
+                            <Icon name="Zap" size={18} /> <span>Features</span>
+                        </a>
+                    </li>
+                    <li className={activeTab === 'setup' ? 'active' : ''}>
+                        <a href="#setup" onClick={(e) => { e.preventDefault(); handleTabChange('setup'); }}>
+                            <Icon name="Settings" size={18} /> <span>Server Setup</span>
+                        </a>
+                    </li>
+                    <li className={activeTab === 'commands' ? 'active' : ''}>
+                        <a href="#commands" onClick={(e) => { e.preventDefault(); handleTabChange('commands'); }}>
+                            <Icon name="Terminal" size={18} /> <span>Bot Commands</span>
+                        </a>
+                    </li>
+                    <li><a href="https://discord.gg/qdP5WemFfd" target="_blank" rel="noreferrer"><Icon name="LifeBuoy" size={18} /> <span>Support</span></a></li>
                 </ul>
                 <div className="side-label">QUICK ACCESS</div>
                 <ul className="side-links">
@@ -231,76 +257,108 @@ export default function Home() {
 
             {/* Main Content */}
             <main className="main-wrapper">
-                <section className="hero" id="home">
-                    <div className="hero-glow"></div>
-                    <div className="hero-content">
-                        <div className="hero-badge">IDENTITY VERIFIED • CORE SYSTEM</div>
-                        <h1 className="hero-title">Build Your <span className="accent-text">Study System</span> in Discord</h1>
-                        <p className="hero-subtitle">Create and manage voice channels, run Pomodoro sessions, earn XP, and automate your server with a powerful productivity system.</p>
-                        <div className="hero-btns">
-                            <Link to="/servers" className="btn btn-primary">
-                                <Icon name="LayoutDashboard" size={18} /> Open Dashboard
-                            </Link>
-                            <a href={inviteLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
-                                <Icon name="UserPlus" size={18} /> Add to Discord
-                            </a>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="features" id="features">
-                    <div className="container">
-                        <div className="section-header">
-                            <h2 className="section-title">Core <span className="accent-text">Features</span></h2>
-                            <div className="section-line"></div>
-                        </div>
-                        <div className="features-grid">
-                            <div className="feature-card">
-                                <div className="card-icon"><Icon name="Volume2" size={28} /></div>
-                                <h3>Voice Channel System</h3>
-                                <p>Create temporary voice channels automatically. Rename, lock, limit, and control access in real time.</p>
-                            </div>
-                            <div className="feature-card">
-                                <div className="card-icon"><Icon name="Clock" size={28} /></div>
-                                <h3>Automation Engine</h3>
-                                <p>Start Pomodoro sessions that sync across users in voice channels.</p>
-                            </div>
-                            <div className="feature-card">
-                                <div className="card-icon"><Icon name="Zap" size={28} /></div>
-                                <h3>XP & Role Rewards</h3>
-                                <p>Earn XP through activity and unlock roles automatically.</p>
-                            </div>
-                            <div className="feature-card">
-                                <div className="card-icon"><Icon name="LayoutDashboard" size={28} /></div>
-                                <h3>Leaderboard System</h3>
-                                <p>Track daily, weekly, and monthly rankings with automatic resets.</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="commands" id="docs">
-                    <div className="container" style={{ maxWidth: '1100px' }}>
-                        <div className="command-interface">
-                            <div className="command-sidebar">
-                                <div className="cmd-sidebar-header">COMMAND LIST</div>
-                                <div className="cmd-list">
-                                    {commandsData.map(cmd => (
-                                        <div key={cmd.id} className={`cmd-item ${activeCommand === cmd.id ? 'active' : ''}`} onClick={() => setActiveCommand(cmd.id)}>
-                                            <span className="cmd-item-name">{cmd.name}</span>
-                                            <span className="cmd-item-desc">{cmd.desc}</span>
+                <div className="dashboard-content">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {activeTab === 'overview' && (
+                                <section className="hero">
+                                    <div className="hero-glow"></div>
+                                    <div className="hero-content">
+                                        <div className="hero-badge">IDENTITY VERIFIED • CORE SYSTEM</div>
+                                        <h1 className="hero-title">Command Your <span className="accent-text">Voice Realm</span></h1>
+                                        <p className="hero-subtitle">(Create, control, and automate voice channels with precision and real-time power.)</p>
+                                        <div className="hero-btns">
+                                            <Link to="/servers" className="btn btn-primary">
+                                                <Icon name="LayoutDashboard" size={18} /> Open Dashboard
+                                            </Link>
+                                            <a href={inviteLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                                                <Icon name="UserPlus" size={18} /> Add to Discord
+                                            </a>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="command-preview">
-                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                                    {renderMockup()}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeTab === 'features' && (
+                                <section className="features">
+                                    <div className="container">
+                                        <div className="section-header">
+                                            <h2 className="section-title">Core <span className="accent-text">Features</span></h2>
+                                            <div className="section-line"></div>
+                                        </div>
+                                        <div className="features-grid">
+                                            <div className="feature-card">
+                                                <div className="card-icon"><Icon name="Volume2" size={28} /></div>
+                                                <h3>Voice Channel System</h3>
+                                                <p>Create temporary voice channels automatically. Rename, lock, limit, and control access in real time.</p>
+                                            </div>
+                                            <div className="feature-card">
+                                                <div className="card-icon"><Icon name="Clock" size={28} /></div>
+                                                <h3>Automation Engine</h3>
+                                                <p>Start Pomodoro sessions that sync across users in voice channels.</p>
+                                            </div>
+                                            <div className="feature-card">
+                                                <div className="card-icon"><Icon name="Zap" size={28} /></div>
+                                                <h3>XP & Role Rewards</h3>
+                                                <p>Earn XP through activity and unlock roles automatically.</p>
+                                            </div>
+                                            <div className="feature-card">
+                                                <div className="card-icon"><Icon name="LayoutDashboard" size={28} /></div>
+                                                <h3>Leaderboard System</h3>
+                                                <p>Track daily, weekly, and monthly rankings with automatic resets.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeTab === 'setup' && (
+                                <section className="setup-view" style={{ padding: '2rem 0' }}>
+                                    <SetupWizard embedded={true} />
+                                </section>
+                            )}
+
+                            {activeTab === 'commands' && (
+                                <section className="commands">
+                                    <div className="container" style={{ maxWidth: '1100px' }}>
+                                        <div className="section-header">
+                                            <h2 className="section-title">Terminal <span className="accent-text">Core</span></h2>
+                                            <p className="text-muted" style={{ marginTop: '0.5rem' }}>Interact with the Scribe protocols using legacy prefix or modern slash commands.</p>
+                                        </div>
+                                        <div className="command-interface">
+                                            <div className="command-sidebar">
+                                                <div className="cmd-sidebar-header">COMMAND LIST</div>
+                                                <div className="cmd-list">
+                                                    {commandsData.map(cmd => (
+                                                        <div key={cmd.id} className={`cmd-item ${activeCommand === cmd.id ? 'active' : ''}`} onClick={() => setActiveCommand(cmd.id)}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                                <Icon name="ChevronRight" size={14} className={activeCommand === cmd.id ? 'text-blue-400' : 'text-slate-600'} />
+                                                                <span className="cmd-item-name">{cmd.name}</span>
+                                                            </div>
+                                                            <span className="cmd-item-desc">{cmd.desc}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="command-preview">
+                                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                                                    {renderMockup()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
+
 
                 <footer className="footer">
                     <div className="footer-content">

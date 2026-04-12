@@ -18,7 +18,7 @@ const STEPS = [
   { id: 6, title: "Protocols", icon: <CheckCircle2 size={18}/> }
 ];
 
-export default function SetupWizard() {
+export default function SetupWizard({ embedded = false }) {
   const { token, apiUrl, api, logout, user } = useContext(AuthContext);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -505,6 +505,72 @@ export default function SetupWizard() {
     </div>
   );
 
+  const renderSteps = () => (
+    <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-4 md:pb-0">
+      {STEPS.map(step => (
+        <div 
+          key={step.id} 
+          className={`flex-shrink-0 flex items-center gap-4 p-4 rounded-xl border transition-all ${
+            currentStep === step.id 
+              ? 'bg-blue-500/10 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
+              : currentStep > step.id 
+                ? 'border-green-500/20 opacity-60' 
+                : 'border-transparent opacity-30'
+          }`}
+        >
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black italic ${
+            currentStep === step.id ? 'bg-blue-500 text-white' : currentStep > step.id ? 'bg-green-600 text-white' : 'bg-white/5 text-slate-500'
+          }`}>
+            {currentStep > step.id ? <CheckCircle2 size={16}/> : step.id}
+          </div>
+          <div className="hidden md:block">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Step 0{step.id}</div>
+            <div className={`text-xs font-bold uppercase italic tracking-wider ${currentStep === step.id ? 'text-blue-400' : 'text-slate-300'}`}>
+              {step.title}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const content = (
+    <AnimatePresence mode="wait">
+       <motion.div
+         key={currentStep}
+         initial={{ opacity: 0, x: 20 }}
+         animate={{ opacity: 1, x: 0 }}
+         exit={{ opacity: 0, x: -20 }}
+         transition={{ duration: 0.4 }}
+         className="w-full"
+       >
+          {currentStep === 1 && renderStep1()}
+          {currentStep === 2 && renderStep2()}
+          {currentStep === 3 && renderStep3()}
+          {currentStep === 4 && renderStep4()}
+          {currentStep === 5 && renderStep5()}
+          {currentStep === 6 && renderStep6()}
+          {currentStep === 7 && renderStep7()}
+       </motion.div>
+    </AnimatePresence>
+  );
+
+  if (embedded) {
+    return (
+      <div className="w-full flex flex-col lg:flex-row gap-12">
+        <aside className="w-full lg:w-72 flex-shrink-0">
+           <div className="p-6 bg-white/5 border border-white/5 rounded-3xl backdrop-blur-md">
+              <div className="text-[10px] font-black tracking-[0.2em] text-blue-500 uppercase italic mb-6">Ceremony Progress</div>
+              {renderSteps()}
+           </div>
+        </aside>
+        <div className="flex-1 w-full max-w-4xl">
+           {content}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#020205] text-[#e2e8f0] relative flex flex-col md:flex-row overflow-hidden">
       {/* Sidebar Progress (Cinematic) */}
@@ -514,32 +580,7 @@ export default function SetupWizard() {
             <span className="font-black italic tracking-widest text-white uppercase text-xl">Scribe Setup</span>
          </div>
 
-         <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-4 md:pb-0">
-            {STEPS.map(step => (
-              <div 
-                key={step.id} 
-                className={`flex-shrink-0 flex items-center gap-4 p-4 rounded-xl border transition-all ${
-                  currentStep === step.id 
-                    ? 'bg-blue-500/10 border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
-                    : currentStep > step.id 
-                      ? 'border-green-500/20 opacity-60' 
-                      : 'border-transparent opacity-30'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black italic ${
-                  currentStep === step.id ? 'bg-blue-500 text-white' : currentStep > step.id ? 'bg-green-600 text-white' : 'bg-white/5 text-slate-500'
-                }`}>
-                  {currentStep > step.id ? <CheckCircle2 size={16}/> : step.id}
-                </div>
-                <div className="hidden md:block">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Step 0{step.id}</div>
-                  <div className={`text-xs font-bold uppercase italic tracking-wider ${currentStep === step.id ? 'text-blue-400' : 'text-slate-300'}`}>
-                    {step.title}
-                  </div>
-                </div>
-              </div>
-            ))}
-         </div>
+          {renderSteps()}
 
          <div className="mt-auto hidden md:block">
             <div className="p-5 bg-white/5 border border-white/5 rounded-2xl space-y-3">
@@ -552,24 +593,7 @@ export default function SetupWizard() {
       {/* Main Content */}
       <main className="flex-1 relative overflow-y-auto px-6 py-12 md:p-20 flex flex-col items-center">
          <div className="max-w-2xl w-full">
-            <AnimatePresence mode="wait">
-               <motion.div
-                 key={currentStep}
-                 initial={{ opacity: 0, x: 20 }}
-                 animate={{ opacity: 1, x: 0 }}
-                 exit={{ opacity: 0, x: -20 }}
-                 transition={{ duration: 0.4 }}
-                 className="w-full"
-               >
-                  {currentStep === 1 && renderStep1()}
-                  {currentStep === 2 && renderStep2()}
-                  {currentStep === 3 && renderStep3()}
-                  {currentStep === 4 && renderStep4()}
-                  {currentStep === 5 && renderStep5()}
-                  {currentStep === 6 && renderStep6()}
-                  {currentStep === 7 && renderStep7()}
-               </motion.div>
-            </AnimatePresence>
+            {content}
          </div>
 
          {/* Background Decor */}
