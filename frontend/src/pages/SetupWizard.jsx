@@ -4,127 +4,150 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Server, Mic, Timer, Heart, Zap, Shield, Plus, ArrowRight, ArrowLeft, 
-  CheckCircle2, AlertCircle, Save, FolderOpen, Hash, RefreshCw
+  CheckCircle2, AlertCircle, Save, FolderOpen, Hash, RefreshCw, Wand2, Link
 } from 'lucide-react';
 import MagicPanel from '../components/MagicPanel.jsx';
 import DungeonButton from '../components/DungeonButton.jsx';
 
 const STEPS = [
-  { id: 1, title: "Choose Realm", icon: <Server size={18}/> },
-  { id: 2, title: "VC Setup", icon: <Mic size={18}/> },
-  { id: 3, title: "Pomodoro Setup", icon: <Timer size={18}/> },
-  { id: 4, title: "Start Session", icon: <Zap size={18}/> },
-  { id: 5, title: "Verify System", icon: <CheckCircle2 size={18}/> },
-  { id: 6, title: "Leaderboards", icon: <Heart size={18}/> }
+  { id: 1, title: "Identity", icon: <Server size={18}/> },
+  { id: 2, title: "Manifest", icon: <Shield size={18}/> },
+  { id: 3, title: "Ley-Lines", icon: <Mic size={18}/> },
+  { id: 4, title: "Focus", icon: <Timer size={18}/> },
+  { id: 5, title: "Rewards", icon: <Award size={18}/> },
+  { id: 6, title: "Protocols", icon: <CheckCircle2 size={18}/> }
 ];
 
 export default function SetupWizard() {
-  const { token, apiUrl, user } = useContext(AuthContext);
+  const { token, apiUrl, api, logout, user } = useContext(AuthContext);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [guilds, setGuilds] = useState([]);
   const [selectedGuild, setSelectedGuild] = useState(null);
   const [channels, setChannels] = useState({ voiceChannels: [], categories: [], textChannels: [] });
+  const [roles, setRoles] = useState([]);
   const [chLoading, setChLoading] = useState(false);
-  const [vcConfig, setVcConfig] = useState({ join_to_create_channel: '', temp_vc_category: '' });
-  const [pomoConfig, setPomoConfig] = useState({ voice_channel_id: '', text_channel_id: '', focus_duration: 50, break_duration: 10 });
+  
+  // Unified State for Config
+  const [config, setConfig] = useState({
+    join_to_create_channel: '',
+    temp_vc_category: '',
+    vc_name_template: "{username}'s Chamber",
+    auto_delete_empty: true,
+    default_user_limit: 0,
+    bot_command_channel_id: '',
+    announcement_channel_id: '',
+    top1_role_id: '',
+    top2_role_id: '',
+    top3_role_id: '',
+    top10_role_id: '',
+  });
+
+  const [pomoConfig, setPomoConfig] = useState({
+    voice_channel_id: '',
+    text_channel_id: '',
+    focus_duration: 50,
+    break_duration: 10,
+    enabled: true
+  });
+
+  const [rewards, setRewards] = useState([]);
+  const [isSummoning, setIsSummoning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   // ─── EFFECTS ───────────────────────────────────────────────────────────────
+  
+  const fetchGuilds = async (force = false) => {
+    if (force) setLoading(true);
+    try {
+      const res = await api.get(`/guilds${force ? '?force=true' : ''}`);
+      setGuilds(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      if (force) setLoading(false);
+    }
+  };
 
-  // Fetch guilds for Step 1
   useEffect(() => {
     if (currentStep === 1) {
-      setLoading(true);
-      axios.get(`${apiUrl}/guilds`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => setGuilds(res.data))
-        .catch(err => console.error(err))
-        .finally(() => setLoading(false));
+      fetchGuilds(true);
     }
-  }, [currentStep, apiUrl, token]);
+  }, [currentStep]);
 
-  // Fetch channels when a guild is selected
+  // Polling for bot installation
+  useEffect(() => {
+    let pollInterval;
+    if (isSummoning && currentStep === 1) {
+      pollInterval = setInterval(() => {
+        fetchGuilds(); 
+      }, 10000); // 10s polling
+      
+      setTimeout(() => setIsSummoning(false), 60000); // Stop after 1m
+    }
+    return () => clearInterval(pollInterval);
+  }, [isSummoning, currentStep]);
+
+  // Fetch all metadata when guild selected
   useEffect(() => {
     if (selectedGuild) {
       setChLoading(true);
-      const headers = { Authorization: `Bearer ${token}` };
       
-      // Fetch Channels
-      axios.get(`${apiUrl}/guilds/${selectedGuild.id}/channels`, { headers })
-        .then(res => {
-          setError(null);
-          setChannels(res.data);
-        })
-        .catch(err => {
-          console.error(err);
-          setError(err.response?.data?.error || "Ritual Sync Failed");
-        })
-        .finally(() => setChLoading(false));
+      const fetchData = async () => {
+        try {
+          const [chanRes, configRes, pomoRes, rolesRes, rewardsRes] = await Promise.all([
+            api.get(`/guilds/${selectedGuild.id}/channels`),
+            api.get(`/guilds/${selectedGuild.id}/config`),
+            api.get(`/pomodoro/${selectedGuild.id}/configs`),
+            api.get(`/guilds/${selectedGuild.id}/roles`),
+            api.get(`/settings/rewards/${selectedGuild.id}`)
+          ]);
 
-      // Fetch existing configs to pre-fill
-      axios.get(`${apiUrl}/guilds/${selectedGuild.id}/config`, { headers })
-        .then(res => {
-          if (res.data) {
-            setVcConfig({
-              join_to_create_channel: res.data.join_to_create_channel || '',
-              temp_vc_category: res.data.temp_vc_category || ''
+          setChannels(chanRes.data);
+          setRoles(rolesRes.data.filter(r => !r.managed && r.name !== '@everyone'));
+          setRewards(rewardsRes.data);
+
+          if (configRes.data && configRes.data.guild_id) {
+            setConfig({
+              ...config,
+              ...configRes.data
             });
           }
-        });
 
-      axios.get(`${apiUrl}/pomodoro/${selectedGuild.id}/configs`, { headers })
-        .then(res => {
-           if (res.data && res.data.length > 0) {
-             const c = res.data[0]; // Take first config
-             setPomoConfig({
-               voice_channel_id: c.voice_channel_id || '',
-               text_channel_id: c.text_channel_id || '',
-               focus_duration: c.focus_duration || 50,
-               break_duration: c.break_duration || 10
-             });
-           }
-        });
+          if (pomoRes.data && pomoRes.data.length > 0) {
+            setPomoConfig({
+              ...pomoConfig,
+              ...pomoRes.data[0],
+              enabled: true
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          setError("Failed to synchronize with realm data.");
+        } finally {
+          setChLoading(false);
+        }
+      };
+
+      fetchData();
     }
-  }, [selectedGuild, apiUrl, token]);
+  }, [selectedGuild, token]);
 
   // ─── HELPERS ───────────────────────────────────────────────────────────────
-
-  const nextStep = () => setCurrentStep(prev => Math.min(6, prev + 1));
+  
+  const nextStep = () => setCurrentStep(prev => Math.min(7, prev + 1));
   const prevStep = () => setCurrentStep(prev => Math.max(1, prev - 1));
 
-  const handleSaveVc = async () => {
-    if (!vcConfig.join_to_create_channel || !vcConfig.temp_vc_category) return;
+  const handleSaveConfig = async (next = true) => {
     setSaving(true);
     try {
-      await axios.post(`${apiUrl}/guilds/${selectedGuild.id}/config`, vcConfig, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      nextStep();
+      await api.post(`/guilds/${selectedGuild.id}/config`, config);
+      if (next) nextStep();
     } catch (err) {
       console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSavePomo = async () => {
-    if (!pomoConfig.voice_channel_id || !pomoConfig.text_channel_id) return;
-    setSaving(true);
-    try {
-      await axios.post(`${apiUrl}/pomodoro/${selectedGuild.id}/config`, pomoConfig, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      nextStep();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ─── RENDERERS ──────────────────────────────────────────────────────────────
-
+      setError("Protocols failed to   // ─── RENDERERS ──────────────────────────────────────────────────────────────
+  
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center mb-10">
@@ -146,7 +169,7 @@ export default function SetupWizard() {
                   setSelectedGuild(guild);
                   nextStep();
                 } else {
-                  window.open(`https://discord.com/api/oauth2/authorize?client_id=1488552752333455481&permissions=8&scope=bot%20applications.commands`, '_blank');
+                  handleSummon(guild.id);
                 }
               }}
               className={`group relative flex items-center gap-4 p-5 rounded-2xl border transition-all ${
@@ -160,7 +183,7 @@ export default function SetupWizard() {
                   ? <img src={guild.icon_url} alt="" className="w-12 h-12 rounded-xl" />
                   : <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center font-black text-blue-500 italic uppercase">{guild.name.charAt(0)}</div>
                 }
-                {guild.is_installed && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-600 rounded flex items-center justify-center border border-black"><Shield size={10} className="text-white fill-white"/></div>}
+                {guild.is_installed && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-600 rounded flex items-center justify-center border border-black shadow-[0_0_8px_rgba(59,130,246,0.5)]"><Shield size={10} className="text-white fill-white"/></div>}
               </div>
               <div className="flex-1 text-left">
                 <div className="font-bold text-slate-100 group-hover:text-white transition-colors uppercase italic truncate max-w-[120px]">{guild.name}</div>
@@ -171,12 +194,6 @@ export default function SetupWizard() {
               {guild.is_installed ? <ArrowRight size={16} className="text-blue-500" /> : <Plus size={16} className="text-slate-500" />}
             </button>
           ))}
-          {guilds.length === 0 && !loading && (
-            <div className="col-span-full py-8 text-center border-2 border-dashed border-white/5 rounded-2xl">
-              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-4">No servers found.</p>
-              <DungeonButton variant="mana" icon={RefreshCw} onClick={() => window.location.reload()}>Refresh Realms</DungeonButton>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -185,44 +202,43 @@ export default function SetupWizard() {
   const renderStep2 = () => (
     <div className="space-y-8">
       <div className="text-center mb-10">
-        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">VC Setup (Spawn Configuration)</h2>
-        <p className="text-slate-500 text-sm italic">Define the geometric parameters for temporary voice dungeons.</p>
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">Realm Manifest</h2>
+        <p className="text-slate-500 text-sm italic">Define the geometric parameters for your sanctuary.</p>
       </div>
 
       <MagicPanel className="p-8 border-white/5" glowColor="rgba(59,130,246,0.05)">
         <div className="space-y-8">
           <div className="space-y-4">
              <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
-               <Mic size={14} className="text-blue-400" /> Anchor VC (Primary Node)
+               <Wand2 size={14} className="text-blue-400" /> Naming Sigil Pattern
              </label>
-             <select 
-               value={vcConfig.join_to_create_channel}
-               onChange={e => setVcConfig({...vcConfig, join_to_create_channel: e.target.value})}
+             <input 
+               type="text"
+               value={config.vc_name_template}
+               onChange={e => setConfig({...config, vc_name_template: e.target.value})}
+               placeholder="{username}'s Chamber"
                className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40"
-             >
-               <option value="">{error ? `⚠️ ${error}` : '— Select anchor channel —'}</option>
-               {(channels.voiceChannels || []).map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
-             </select>
+             />
+             <p className="text-[9px] text-slate-600 uppercase font-bold tracking-widest italic">Variables: {'{username}, {count}'}</p>
           </div>
 
-          <div className="space-y-4">
-             <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
-               <FolderOpen size={14} className="text-purple-400" /> Void Category (Target)
-             </label>
-             <select 
-               value={vcConfig.temp_vc_category}
-               onChange={e => setVcConfig({...vcConfig, temp_vc_category: e.target.value})}
-               className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40"
-             >
-               <option value="">{error ? `⚠️ ${error}` : '— Select ritual space —'}</option>
-               {(channels.categories || []).map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
-             </select>
+          <div className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl">
+            <div className="space-y-1">
+              <div className="text-xs font-black uppercase tracking-widest text-white italic">Auto-Purge Empty Rooms</div>
+              <div className="text-[10px] text-slate-500 italic">Vanish chambers when soul count reaches zero</div>
+            </div>
+            <button 
+              onClick={() => setConfig({...config, auto_delete_empty: !config.auto_delete_empty})}
+              className={`w-12 h-6 rounded-full transition-all relative ${config.auto_delete_empty ? 'bg-blue-600' : 'bg-slate-800'}`}
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.auto_delete_empty ? 'left-7' : 'left-1'}`} />
+            </button>
           </div>
 
           <div className="pt-4 border-t border-white/5 flex items-center justify-between">
             <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs uppercase tracking-widest"><ArrowLeft size={16}/> Back</button>
-            <DungeonButton variant="mana" icon={Save} onClick={handleSaveVc} disabled={saving || !vcConfig.join_to_create_channel || !vcConfig.temp_vc_category}>
-              {saving ? 'INCANTING...' : 'SAVE & CONTINUE'}
+            <DungeonButton variant="mana" icon={Save} onClick={() => handleSaveConfig()} disabled={saving}>
+              {saving ? 'RECORDING SIGIL...' : 'SAVE & CONTINUE'}
             </DungeonButton>
           </div>
         </div>
@@ -233,56 +249,44 @@ export default function SetupWizard() {
   const renderStep3 = () => (
     <div className="space-y-8">
       <div className="text-center mb-10">
-        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">Pomodoro Setup (Focus Engine)</h2>
-        <p className="text-slate-500 text-sm italic">Automate your study rituals with reactive focus timers.</p>
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">Voice Ley-Lines</h2>
+        <p className="text-slate-500 text-sm italic">Set the anchor points for automated voice dungeon manifestation.</p>
       </div>
 
       <MagicPanel className="p-8 border-white/5" glowColor="rgba(59,130,246,0.05)">
         <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-               <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
-                 <Mic size={14} className="text-blue-400" /> Voice Channel
-               </label>
-               <select 
-                 value={pomoConfig.voice_channel_id}
-                 onChange={e => setPomoConfig({...pomoConfig, voice_channel_id: e.target.value})}
-                 className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40"
-               >
-                  <option value="">{error ? `⚠️ ${error}` : '— Select VC —'}</option>
-                  {(channels.voiceChannels || []).map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
-                </select>
-            </div>
-            <div className="space-y-4">
-               <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
-                 <Hash size={14} className="text-cyan-400" /> Text Channel
-               </label>
-               <select 
-                 value={pomoConfig.text_channel_id}
-                 onChange={e => setPomoConfig({...pomoConfig, text_channel_id: e.target.value})}
-                 className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40"
-               >
-                  <option value="">{error ? `⚠️ ${error}` : '— Select channel —'}</option>
-                  {(channels.textChannels || []).map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
-                </select>
-            </div>
+          <div className="space-y-4">
+             <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
+               <Mic size={14} className="text-blue-400" /> Primary Spawning Node (Anchor)
+             </label>
+             <select 
+               value={config.join_to_create_channel}
+               onChange={e => setConfig({...config, join_to_create_channel: e.target.value})}
+               className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40"
+             >
+               <option value="">— Select Anchor VC —</option>
+               {channels.voiceChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div className="space-y-4">
-               <label className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">Focus Duration (MIN)</label>
-               <input type="number" value={pomoConfig.focus_duration} onChange={e => setPomoConfig({...pomoConfig, focus_duration: parseInt(e.target.value)})} className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40" />
-             </div>
-             <div className="space-y-4">
-               <label className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">Break Duration (MIN)</label>
-               <input type="number" value={pomoConfig.break_duration} onChange={e => setPomoConfig({...pomoConfig, break_duration: parseInt(e.target.value)})} className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40" />
-             </div>
+          <div className="space-y-4">
+             <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
+               <FolderOpen size={14} className="text-purple-400" /> Target Void (Category)
+             </label>
+             <select 
+               value={config.temp_vc_category}
+               onChange={e => setConfig({...config, temp_vc_category: e.target.value})}
+               className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40"
+             >
+               <option value="">— Select Category —</option>
+               {channels.categories.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+             </select>
           </div>
 
           <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-            <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs uppercase tracking-widest"><ArrowLeft size={16}/> Back</button>
-            <DungeonButton variant="fire" icon={Save} onClick={handleSavePomo} disabled={saving || !pomoConfig.voice_channel_id || !pomoConfig.text_channel_id}>
-               {saving ? 'SAVING RITUAL...' : 'SAVE & CONTINUE'}
+            <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs uppercase tracking-widest"><ArrowLeft size={16}/> Back </button>
+            <DungeonButton variant="mana" icon={Save} onClick={() => handleSaveConfig()} disabled={saving || !config.join_to_create_channel || !config.temp_vc_category}>
+              NEXT INFRASTRUCTURE
             </DungeonButton>
           </div>
         </div>
@@ -291,59 +295,196 @@ export default function SetupWizard() {
   );
 
   const renderStep4 = () => (
-    <div className="space-y-10 text-center">
-      <div className="mb-10">
-        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2 text-blue-500">Ignite Your Focus</h2>
-        <p className="text-slate-500 text-sm italic">The configuration is manifest. It is time to begin the ritual.</p>
+    <div className="space-y-8">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">Focus Engine</h2>
+        <p className="text-slate-500 text-sm italic">Configure reactive focus timers for your sanctuary.</p>
       </div>
 
-      <MagicPanel className="p-10 border-white/5 bg-blue-500/[0.02]" glowColor="rgba(59,130,246,0.1)">
+      <MagicPanel className="p-8 border-white/5" glowColor="rgba(239,68,68,0.05)">
         <div className="space-y-8">
-           <div className="p-6 bg-black/40 border border-blue-500/20 rounded-2xl inline-block mb-4">
-              <Zap size={48} className="text-blue-500 animate-pulse" />
-           </div>
-           <div className="space-y-4">
-              <h3 className="text-xl font-black italic uppercase text-white tracking-widest">Join Configured VC</h3>
-              <p className="text-slate-400 max-w-md mx-auto leading-relaxed">
-                Joining <span className="text-blue-400 font-bold">#{channels.voiceChannels.find(c => c.id === pomoConfig.voice_channel_id)?.name}</span> will instantly trigger the Focus Engine. 
-                Scribe will manifest a HUD in the linked text channel to guide your ritual.
-              </p>
-           </div>
-           <div className="flex justify-center gap-6 pt-6">
-              <DungeonButton variant="mana" icon={ArrowRight} onClick={nextStep} className="h-14 px-10">Next Strategy</DungeonButton>
-           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+               <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
+                 <Mic size={14} className="text-blue-400" /> Trigger VC
+               </label>
+               <select 
+                 value={pomoConfig.voice_channel_id}
+                 onChange={e => setPomoConfig({...pomoConfig, voice_channel_id: e.target.value})}
+                 className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-red-500/40"
+               >
+                  <option value="">— Select VC —</option>
+                  {channels.voiceChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+               </select>
+            </div>
+            <div className="space-y-4">
+               <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
+                 <Hash size={14} className="text-cyan-400" /> HUD Text Channel
+               </label>
+               <select 
+                 value={pomoConfig.text_channel_id}
+                 onChange={e => setPomoConfig({...pomoConfig, text_channel_id: e.target.value})}
+                 className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-red-500/40"
+               >
+                  <option value="">— Select Text Channel —</option>
+                  {channels.textChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="space-y-4">
+               <label className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">Focus (MIN)</label>
+               <input type="number" value={pomoConfig.focus_duration} onChange={e => setPomoConfig({...pomoConfig, focus_duration: parseInt(e.target.value)})} className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-red-500/40" />
+             </div>
+             <div className="space-y-4">
+               <label className="text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">Break (MIN)</label>
+               <input type="number" value={pomoConfig.break_duration} onChange={e => setPomoConfig({...pomoConfig, break_duration: parseInt(e.target.value)})} className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-red-500/40" />
+             </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+            <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs uppercase tracking-widest"><ArrowLeft size={16}/> Back</button>
+            <DungeonButton variant="fire" icon={Save} onClick={handleSavePomo} disabled={saving || !pomoConfig.voice_channel_id || !pomoConfig.text_channel_id}>
+               IGNITE ENGINE
+            </DungeonButton>
+          </div>
         </div>
       </MagicPanel>
     </div>
   );
 
   const renderStep5 = () => (
-    <div className="space-y-8 text-center">
-      <div className="mb-10">
-        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">Verify Manifestation</h2>
-        <p className="text-slate-500 text-sm italic">Ensure your sanctuary ley-lines are correctly aligned.</p>
+    <div className="space-y-8">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">Rank & Rewards</h2>
+        <p className="text-slate-500 text-sm italic">Bestow ancient roles upon hunters who survive the ritual.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <MagicPanel className="p-8 border-white/5 text-left space-y-4">
-           <div className="section-label">System Overview</div>
-           <p className="text-slate-400 text-sm italic">Track active users and cumulative focus hours across your entire realm.</p>
-           <DungeonButton variant="mana" href={`/dashboard/${selectedGuild.id}`} className="w-full h-12 text-xs">Access Overview</DungeonButton>
-        </MagicPanel>
-        <MagicPanel className="p-8 border-white/5 text-left space-y-4">
-           <div className="section-label">Voice Monitor</div>
-           <p className="text-slate-400 text-sm italic">Trace active rooms and temporary dungeons in real-time manifestation.</p>
-           <DungeonButton variant="mana" href={`/dashboard/${selectedGuild.id}/monitor`} className="w-full h-12 text-xs">Open Monitor</DungeonButton>
-        </MagicPanel>
-      </div>
+      <MagicPanel className="p-8 border-white/5" glowColor="rgba(168,85,247,0.05)">
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Top 1 Hunter</label>
+              <select value={config.top1_role_id} onChange={e => setConfig({...config, top1_role_id: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-xs text-white outline-none">
+                <option value="">— Select Role —</option>
+                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Top 10 Hunters</label>
+              <select value={config.top10_role_id} onChange={e => setConfig({...config, top10_role_id: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-xs text-white outline-none">
+                <option value="">— Select Role —</option>
+                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+          </div>
 
-      <div className="pt-10">
-        <DungeonButton variant="fire" icon={ArrowRight} onClick={nextStep} className="h-14 px-10">Final Revelation</DungeonButton>
-      </div>
+          <div className="space-y-4">
+             <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic border-b border-white/5 pb-2">Milestone Rewards</div>
+             <div className="space-y-3">
+                {rewards.map(reward => (
+                  <div key={reward.id} className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center font-black text-purple-400 text-[10px] italic">{reward.required_hours}h</div>
+                      <div className="text-xs font-bold text-slate-300">{roles.find(r => r.id === reward.role_id)?.name || 'Unknown Role'}</div>
+                    </div>
+                    <button onClick={() => handleDeleteReward(reward.id)} className="p-1.5 hover:bg-red-500/10 text-slate-600 hover:text-red-500 transition-all rounded-lg"><CheckCircle2 size={14}/></button>
+                  </div>
+                ))}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end bg-purple-500/[0.03] p-4 rounded-2xl border border-purple-500/10">
+                   <div className="space-y-2">
+                      <label className="text-[8px] font-black text-purple-400 uppercase tracking-widest">Hours</label>
+                      <input id="new-reward-hours" type="number" placeholder="10" className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white" />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[8px] font-black text-purple-400 uppercase tracking-widest">Awarded Role</label>
+                      <select id="new-reward-role" className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white">
+                         <option value="">— Select —</option>
+                         {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                   </div>
+                   <DungeonButton variant="mana" className="h-9 text-[9px]" onClick={() => {
+                     const h = document.getElementById('new-reward-hours').value;
+                     const r = document.getElementById('new-reward-role').value;
+                     if (h && r) {
+                       handleAddReward(parseInt(h), r);
+                       document.getElementById('new-reward-hours').value = '';
+                       document.getElementById('new-reward-role').value = '';
+                     }
+                   }}>Manifest</DungeonButton>
+                </div>
+             </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+            <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs uppercase tracking-widest"><ArrowLeft size={16}/> Back</button>
+            <DungeonButton variant="mana" icon={Save} onClick={() => handleSaveConfig()} disabled={saving}>
+              {saving ? 'SEALING REWARDS...' : 'SAVE & CONTINUE'}
+            </DungeonButton>
+          </div>
+        </div>
+      </MagicPanel>
     </div>
   );
 
   const renderStep6 = () => (
+    <div className="space-y-8">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">Sanctuary Protocols</h2>
+        <p className="text-slate-500 text-sm italic">Finalize the restricted ley-lines for your realm.</p>
+      </div>
+
+      <MagicPanel className="p-8 border-white/5" glowColor="rgba(59,130,246,0.05)">
+        <div className="space-y-8">
+          <div className="space-y-4">
+             <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
+               <Shield size={14} className="text-blue-400" /> Restricted Command Channel
+             </label>
+             <select 
+               value={config.bot_command_channel_id}
+               onChange={e => setConfig({...config, bot_command_channel_id: e.target.value})}
+               className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-blue-500/40"
+             >
+               <option value="">— Select Channel —</option>
+               {channels.textChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+             </select>
+          </div>
+
+          <div className="space-y-4">
+             <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
+               <Zap size={14} className="text-yellow-400" /> Announcement Portal (Level Ups)
+             </label>
+             <select 
+               value={config.announcement_channel_id}
+               onChange={e => setConfig({...config, announcement_channel_id: e.target.value})}
+               className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-blue-500/40"
+             >
+               <option value="">— Select Channel —</option>
+               {channels.textChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+             </select>
+          </div>
+
+          <div className="p-6 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex items-center gap-6">
+             <div className="p-3 bg-blue-500/10 rounded-xl"><CheckCircle2 className="text-blue-500" size={24}/></div>
+             <div className="space-y-1">
+                <div className="text-xs font-black uppercase tracking-widest italic text-white">Identity Verified</div>
+                <p className="text-[10px] text-slate-500 italic max-w-sm">All ley-lines are aligned. Proceed to manifest the full dashboard interface.</p>
+             </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+            <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs uppercase tracking-widest"><ArrowLeft size={16}/> Back</button>
+            <DungeonButton variant="fire" icon={Zap} onClick={() => handleSaveConfig()} disabled={saving || !config.bot_command_channel_id}>
+              {saving ? 'MANIFESTING...' : 'FINALIZE RITUAL'}
+            </DungeonButton>
+          </div>
+        </div>
+      </MagicPanel>
+    </div>
+  );
+
+  const renderStep7 = () => (
     <div className="space-y-10 text-center py-10">
       <div className="space-y-4">
          <div className="w-20 h-20 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -351,7 +492,7 @@ export default function SetupWizard() {
          </div>
          <h2 className="text-4xl font-black italic tracking-tighter uppercase text-white">Ritual Complete</h2>
          <p className="text-slate-500 text-lg italic max-w-xl mx-auto leading-relaxed">
-           Your realm has been successfully tethered to the Scribe Core. Every hour of focus manifests into XP, fueling your ascent on the global leaderboard.
+            Your realm has been successfully tethered to the Scribe Core. Every hour of focus manifests into XP, fueling your ascent on the global leaderboard.
          </p>
       </div>
 
@@ -426,6 +567,7 @@ export default function SetupWizard() {
                   {currentStep === 4 && renderStep4()}
                   {currentStep === 5 && renderStep5()}
                   {currentStep === 6 && renderStep6()}
+                  {currentStep === 7 && renderStep7()}
                </motion.div>
             </AnimatePresence>
          </div>

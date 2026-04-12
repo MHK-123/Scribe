@@ -81,9 +81,8 @@ const DashboardLayout = () => {
   }, [guildId, apiUrl, token]);
 
   // Auto-redirect if somehow navigating to an undefined guild
-  // Must happen after hooks to obey React Rules of Hooks
-  if (guildId === 'undefined') {
-    return <Navigate to="/servers" replace />;
+  if (guildId === 'undefined' || !guildId) {
+    return <Navigate to="/setup" replace />;
   }
 
   const navItems = [

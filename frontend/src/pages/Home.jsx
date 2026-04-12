@@ -218,13 +218,13 @@ export default function Home() {
                 <ul className="side-links" style={{ marginBottom: '2rem' }}>
                     <li className="active"><a href="#home"><Icon name="Home" size={18} /> Overview</a></li>
                     <li><a href="#features"><Icon name="Zap" size={18} /> Features</a></li>
-                    <li><Link to="/servers"><Icon name="Settings" size={18} /> Server Setup</Link></li>
+                    <li><Link to="/setup"><Icon name="Settings" size={18} /> Server Setup</Link></li>
                     <li><a href="#docs"><Icon name="BookOpen" size={18} /> Documentation</a></li>
                     <li><a href="https://discord.gg/qdP5WemFfd" target="_blank" rel="noreferrer"><Icon name="LifeBuoy" size={18} /> Support</a></li>
                 </ul>
                 <div className="side-label">QUICK ACCESS</div>
                 <ul className="side-links">
-                    <li><Link to="/servers"><Icon name="LayoutDashboard" size={18} /> Dashboard</Link></li>
+                    <li><Link to="/setup"><Icon name="LayoutDashboard" size={18} /> Dashboard</Link></li>
                     <li><a href={inviteLink} target="_blank" rel="noreferrer"><Icon name="UserPlus" size={18} /> Add to Discord</a></li>
                 </ul>
             </aside>
@@ -238,7 +238,7 @@ export default function Home() {
                         <h1 className="hero-title">Build Your <span className="accent-text">Study System</span> in Discord</h1>
                         <p className="hero-subtitle">Create and manage voice channels, run Pomodoro sessions, earn XP, and automate your server with a powerful productivity system.</p>
                         <div className="hero-btns">
-                            <Link to="/servers" className="btn btn-primary">
+                            <Link to="/setup" className="btn btn-primary">
                                 <Icon name="LayoutDashboard" size={18} /> Open Dashboard
                             </Link>
                             <a href={inviteLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
