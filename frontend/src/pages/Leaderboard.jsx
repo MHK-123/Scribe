@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Clock, Search } from 'lucide-react';
+import { getHunterRank } from '../utils/hunterUtils';
 
 export default function Leaderboard() {
   const { id } = useParams();
@@ -164,14 +165,22 @@ export default function Leaderboard() {
                                          </div>
                                       )}
                                    </div>
-                                   <div>
-                                      <div className="font-bold text-[#ededed] group-hover:text-white transition-colors uppercase tracking-tight italic">
-                                         {user.username}
-                                      </div>
-                                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5 font-mono">
-                                         ID: {user.user_id.slice(-8)}
-                                      </div>
-                                   </div>
+                                    <div>
+                                       <div 
+                                          className="font-black transition-colors uppercase tracking-[0.15em] italic text-sm"
+                                          style={{ color: getHunterRank(user.level, user.rank || idx + 1).color, textShadow: `0 0 10px ${getHunterRank(user.level, user.rank || idx + 1).shadow}` }}
+                                       >
+                                          {getHunterRank(user.level, user.rank || idx + 1).label}
+                                       </div>
+                                       <div className="flex items-center gap-2 mt-0.5">
+                                          <div className="text-[9px] text-white/40 font-bold uppercase tracking-widest italic truncate max-w-[120px]">
+                                             @{user.username}
+                                          </div>
+                                          <div className="text-[8px] text-gray-600 font-bold uppercase tracking-widest font-mono">
+                                             ID: {user.user_id.slice(-6)}
+                                          </div>
+                                       </div>
+                                    </div>
                                 </div>
                              </td>
                              <td className="py-4 px-6 text-right">

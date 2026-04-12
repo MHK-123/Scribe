@@ -138,21 +138,40 @@ export default function Home() {
                             <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>Rank</div>
                             <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem' }}>Hunter</div>
                             <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem', textAlign: 'right' }}>Level | Time</div>
-                            <div style={{ color: '#facc15', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#1</div>
-                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Horse</span></div>
-                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 5 | 5.6h</div>
-                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#2</div>
-                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@i get no huzz</span></div>
-                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 3 | 2.6h</div>
-                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#3</div>
-                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Lisipisi Chan UwU</span></div>
-                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 2 | 0.8h</div>
-                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#4</div>
-                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Shaun The Sheep</span></div>
-                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 1 | 0.2h</div>
-                            <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#5</div>
-                            <div><span className="discord-mention" style={{ background: '#3b82f6', color: '#fff' }}>@Avi</span></div>
-                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 1 | 0.2h</div>
+                             <div style={{ color: '#facc15', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#1</div>
+                             <div>
+                                <span style={{ color: '#facc15', fontWeight: 900, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontStyle: 'italic', display: 'block' }}>S-Rank Hunter</span>
+                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem' }}>@Horse</span>
+                             </div>
+                             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 24 | 154h</div>
+                             
+                             <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#2</div>
+                             <div>
+                                <span style={{ color: '#c084fc', fontWeight: 900, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontStyle: 'italic', display: 'block' }}>A-Rank Hunter</span>
+                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem' }}>@i get no huzz</span>
+                             </div>
+                             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 12 | 84h</div>
+                             
+                             <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#3</div>
+                             <div>
+                                <span style={{ color: '#60a5fa', fontWeight: 900, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontStyle: 'italic', display: 'block' }}>B-Rank Hunter</span>
+                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem' }}>@Lisipisi Chan UwU</span>
+                             </div>
+                             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 8 | 42h</div>
+                             
+                             <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#4</div>
+                             <div>
+                                <span style={{ color: '#94a3b8', fontWeight: 900, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontStyle: 'italic', display: 'block' }}>C-Rank Hunter</span>
+                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem' }}>@Shaun The Sheep</span>
+                             </div>
+                             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 4 | 12h</div>
+                             
+                             <div style={{ color: '#dbdee1', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>#5</div>
+                             <div>
+                                <span style={{ color: '#64748b', fontWeight: 900, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontStyle: 'italic', display: 'block' }}>Hunter</span>
+                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem' }}>@Avi</span>
+                             </div>
+                             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', textAlign: 'right' }}>Lvl 1 | 0.2h</div>
                         </div>
                     </div>
                 </BotMessageContainer>

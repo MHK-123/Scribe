@@ -3,7 +3,7 @@ import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext.jsx';
 import {
-  Settings, Users, Activity, Trophy, Mic, LogOut, Award, Play, Timer, Hexagon, ShieldAlert
+  Settings, Users, Activity, Trophy, Mic, LogOut, Award, Play, Timer, Hexagon, ShieldAlert, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,6 +18,7 @@ import Leaderboard      from './pages/Leaderboard.jsx';
 import SettingsBackup   from './pages/SettingsBackup.jsx';
 import LevelRewards     from './pages/LevelRewards.jsx';
 import Pomodoro         from './pages/Pomodoro.jsx';
+import { getHunterRank } from './utils/hunterUtils';
 import SetupWizard      from './pages/SetupWizard.jsx';
 import AdminDashboard   from './pages/AdminDashboard.jsx';
 import Privacy          from './pages/Privacy.jsx';
@@ -117,7 +118,14 @@ const DashboardLayout = () => {
               <img src={avatarUrl} alt="Avatar" className="w-7 h-7 rounded-full border border-blue-500/50" />
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-black rounded-full" />
             </div>
-            <span className="text-sm font-semibold tracking-wide">{user?.username}</span>
+            <div className="flex flex-col text-right">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#facc15] drop-shadow-[0_0_8px_rgba(250,204,21,0.4)] italic">
+                {getHunterRank(user?.level || 1).label}
+              </span>
+              <span className="text-xs font-bold tracking-tight text-white italic">
+                {user?.username || 'GUEST'}
+              </span>
+            </div>
           </div>
           <DungeonButton 
             variant="danger"

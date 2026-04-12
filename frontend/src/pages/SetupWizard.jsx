@@ -152,6 +152,50 @@ export default function SetupWizard({ embedded = false }) {
     }
   };
 
+  const handleSummon = (guildId) => {
+    const inviteLink = `https://discord.com/api/oauth2/authorize?client_id=1488552752333455481&permissions=8&scope=bot%20applications.commands&guild_id=${guildId}&disable_guild_select=true`;
+    window.open(inviteLink, '_blank', 'width=500,height=800');
+    setIsSummoning(true);
+  };
+
+  const handleSavePomo = async () => {
+    setSaving(true);
+    try {
+      await api.post(`/pomodoro/${selectedGuild.id}/configs`, pomoConfig);
+      nextStep();
+    } catch (err) {
+      console.error(err);
+      setError("Focus engine failure. Check ley-line stability.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddReward = async (hours, roleId) => {
+    try {
+      await api.post(`/settings/rewards`, {
+        guild_id: selectedGuild.id,
+        required_hours: hours,
+        role_id: roleId
+      });
+      const rewardsRes = await api.get(`/settings/rewards/${selectedGuild.id}`);
+      setRewards(rewardsRes.data);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to manifest reward relic.");
+    }
+  };
+
+  const handleDeleteReward = async (rewardId) => {
+    try {
+      await api.delete(`/settings/rewards/${rewardId}`);
+      setRewards(rewards.filter(r => r.id !== rewardId));
+    } catch (err) {
+      console.error(err);
+      setError("Failed to dissolve relic.");
+    }
+  };
+
   // ─── RENDERERS ──────────────────────────────────────────────────────────────
   
   const renderStep1 = () => (

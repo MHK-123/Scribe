@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getHunterRank } from '../utils/hunterUtils';
 import * as Lucide from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area 
@@ -20,7 +21,7 @@ const Icon = ({ name, size = 18, className = "" }) => {
 
 export default function DashboardOverview() {
   const { id } = useParams();
-  const { token, apiUrl } = useContext(AuthContext);
+  const { user, token, apiUrl } = useContext(AuthContext);
   
   // High-fidelity state with defaults
   const [stats, setStats] = useState(null);
@@ -142,18 +143,27 @@ export default function DashboardOverview() {
                    </div>
                 </div>
 
-                <div className="space-y-2">
-                   <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                      <Icon name="Shield" className="text-blue-500" size={20} />
-                      Hunter Progress
-                   </h3>
-                   <div className="flex flex-wrap gap-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
-                      <span className="flex items-center gap-1.5"><Icon name="Sword" size={12} className="text-slate-400"/> {currentXp} / {nextLvlXp} Essence</span>
-                      <span className="flex items-center gap-1.5"><Icon name="Clock" size={12} className="text-slate-400"/> {Number(progress?.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
-                   </div>
-                   <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden border border-white/5">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${xpProgressPercent}%` }} transition={{ duration: 1 }} className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
-                   </div>
+                <div className="flex-1 space-y-4">
+                  <div className="space-y-1">
+                     <div className="flex items-center gap-2">
+                        <span 
+                           className="text-[10px] font-black uppercase tracking-[0.3em] italic"
+                           style={{ color: getHunterRank(level).color, textShadow: `0 0 10px ${getHunterRank(level).shadow}` }}
+                        >
+                           {getHunterRank(level).label}
+                        </span>
+                     </div>
+                     <h3 className="text-2xl font-black text-white tracking-tighter uppercase italic flex items-center gap-2">
+                        {user?.username}
+                     </h3>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                     <span className="flex items-center gap-1.5"><Icon name="Sword" size={12} className="text-slate-400"/> {currentXp} / {nextLvlXp} Essence</span>
+                     <span className="flex items-center gap-1.5"><Icon name="Clock" size={12} className="text-slate-400"/> {Number(progress?.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
+                  </div>
+                  <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden border border-white/5">
+                     <motion.div initial={{ width: 0 }} animate={{ width: `${xpProgressPercent}%` }} transition={{ duration: 1 }} className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
+                  </div>
                 </div>
             </div>
 
