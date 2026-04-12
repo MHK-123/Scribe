@@ -351,8 +351,8 @@ export default function App() {
           <Route path="/dashboard/:id/leaderboard" element={<Leaderboard />} />
           <Route path="/dashboard/:id/rewards"     element={<LevelRewards />} />
           <Route path="/dashboard/:id/settings"    element={<SettingsBackup />} />
-          <Route path="/admin"                    element={<AdminDashboard />} />
         </Route>
+        <Route path="/admin" element={<AdminDashboard />} />
       </Route>
       
       {/* Catch-all Redirect */}

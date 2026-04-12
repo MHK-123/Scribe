@@ -54,6 +54,7 @@ router.get('/guilds', async (req, res) => {
         id: guild.id,
         name: guild.name || 'Unknown Realm',
         icon: guild.icon,
+        ownerId: guild.ownerId,
         memberCount: guild.memberCount || 0,
         config: configsMap[guild.id] || null
       }));

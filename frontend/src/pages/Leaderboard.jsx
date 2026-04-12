@@ -13,14 +13,6 @@ export default function Leaderboard() {
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // High-fidelity fallback/demo data
-  const demoLeaders = [
-    { user_id: 'demo1', username: 'Shadow Walker', total_hours: '154.2', rank: 1, avatar_url: null },
-    { user_id: 'demo2', username: 'Void Hunter', total_hours: '128.5', rank: 2, avatar_url: null },
-    { user_id: 'demo3', username: 'Mana Weaver', total_hours: '94.8', rank: 3, avatar_url: null },
-    { user_id: 'demo4', username: 'Soul Seeker', total_hours: '82.1', rank: 4, avatar_url: null },
-    { user_id: 'demo5', username: 'Dungeon Master', total_hours: '75.3', rank: 5, avatar_url: null },
-  ];
 
   useEffect(() => {
     setLoading(true);
@@ -29,13 +21,11 @@ export default function Leaderboard() {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => {
-      const data = Array.isArray(res.data) ? res.data : [];
-      // Use real data if exists, otherwise show demo set
-      setLeaders(data.length > 0 ? data : demoLeaders.map(d => ({ ...d, isDemo: true })));
+      setLeaders(Array.isArray(res.data) ? res.data : []);
     })
     .catch(err => {
       console.error(err);
-      setLeaders(demoLeaders.map(d => ({ ...d, isDemo: true })));
+      setLeaders([]);
     })
     .finally(() => setLoading(false));
   }, [filter, id, apiUrl, token]);
@@ -84,12 +74,6 @@ export default function Leaderboard() {
       </div>
       
       <div className="glass-card rounded-2xl overflow-hidden border border-border/60 relative">
-        {/* Demo Watermark */}
-        {leaders.some(l => l.isDemo) && (
-          <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0 opacity-[0.03]">
-             <div className="text-[200px] font-black uppercase -rotate-45 whitespace-nowrap select-none">MOCKED REALM · MOCKED REALM</div>
-          </div>
-        )}
 
         {/* Search / Filter Bar area (visual only for now) */}
         <div className="p-4 border-b border-white/5 flex items-center justify-between bg-surface-hover/20 relative z-10">

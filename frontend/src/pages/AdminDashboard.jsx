@@ -217,12 +217,17 @@ export default function AdminDashboard() {
                          <Skull size={24} className="text-slate-700" />
                       )}
                     </div>
-                    <div>
+                    <div className="flex flex-col gap-2">
                        <div className="font-black text-white text-base tracking-tight uppercase italic">{g.name}</div>
-                       <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-mono text-slate-600 border border-white/5 px-2 py-0.5 rounded italic">{g.id}</span>
-                          <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_red]" />
-                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Active Link</span>
+                       <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-2">
+                             <div className="text-[10px] font-bold text-slate-700 uppercase tracking-widest leading-none">Realm ID</div>
+                             <span className="text-[10px] font-mono text-slate-500 border border-white/5 px-2 py-0.5 rounded italic bg-white/[0.02]">{g.id}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <div className="text-[10px] font-bold text-red-900/40 uppercase tracking-widest leading-none">Owner ID</div>
+                             <span className="text-[10px] font-mono text-red-400 border border-red-500/10 px-2 py-0.5 rounded italic bg-red-500/[0.02] cursor-pointer hover:bg-red-500/10 transition-colors" title="Click to copy ID" onClick={() => { navigator.clipboard.writeText(g.ownerId); alert('Owner ID copied to scrolls.'); }}>{g.ownerId || 'Unknown'}</span>
+                          </div>
                        </div>
                     </div>
                   </div>

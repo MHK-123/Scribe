@@ -92,6 +92,7 @@ export const discordService = {
           id: String(g.id), // Guarantee String ID for comparison stability
           name: g.name,
           icon: g.icon,
+          ownerId: g.owner_id,
           memberCount: g.approximate_member_count || 0
         }));
 
