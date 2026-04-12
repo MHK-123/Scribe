@@ -73,6 +73,10 @@ export const AuthProvider = ({ children }) => {
     let isSubscribed = true;
     const verifyToken = async () => {
       try {
+        if (!token) {
+          setLoading(false);
+          return;
+        }
         console.log("Attempting to verify token with API:", apiUrl);
         const res = await api.get('/auth/user');
         if (isSubscribed) {
@@ -87,7 +91,7 @@ export const AuthProvider = ({ children }) => {
         }
       } finally {
         if (isSubscribed) {
-           setLoading(false);
+          setLoading(false);
         }
       }
     };

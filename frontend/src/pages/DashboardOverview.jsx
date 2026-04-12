@@ -57,9 +57,9 @@ export default function DashboardOverview() {
         
         const currentHours = parseFloat(progRes.data?.total_study_hours || 0);
         const upcoming = Array.isArray(rewRes.data) 
-           ? rewRes.data.find(r => parseFloat(r.required_hours || 0) > currentHours) 
+           ? rewRes.data.find(r => parseFloat(r?.required_hours || 0) > currentHours) 
            : null;
-        setNextReward(upcoming);
+        setNextReward(upcoming || null);
       } catch (err) {
         if (axios.isCancel(err)) return;
         console.error('Failed to load dashboard data:', err);

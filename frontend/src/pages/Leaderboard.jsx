@@ -177,7 +177,9 @@ export default function Leaderboard() {
                              <td className="py-4 px-6 text-right">
                                 <div className="inline-flex items-center justify-end gap-1.5 bg-surface px-3 py-1.5 rounded-lg border border-border group-hover:border-white/10 transition-colors">
                                    <Clock size={14} className="text-emerald-400" />
-                                   <span className="font-black text-[#ededed] italic">{parseFloat(user.total_hours || 0).toFixed(1)}</span>
+                                   <span className="font-black text-[#ededed] italic">
+                                      {Number(user?.total_hours || 0).toFixed(1)}
+                                   </span>
                                    <span className="text-[10px] text-gray-500 font-black uppercase italic">Hours</span>
                                 </div>
                              </td>

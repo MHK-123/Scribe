@@ -6,12 +6,16 @@ import './index.css'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { BrowserRouter as Router } from 'react-router-dom'
 
+import { ErrorBoundary } from './components/ErrorBoundary.jsx'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
-      <Router>
-        <App />
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <App />
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 )

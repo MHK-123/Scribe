@@ -167,7 +167,7 @@ export default function SetupWizard({ embedded = false }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {guilds.map(guild => (
+          {Array.isArray(guilds) && guilds.map(guild => (
             <button
               key={guild.id}
               onClick={() => {
@@ -285,7 +285,7 @@ export default function SetupWizard({ embedded = false }) {
                className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-blue-500/40"
              >
                <option value="">— Select Category —</option>
-               {channels.categories.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+               {channels?.categories?.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
              </select>
           </div>
 
@@ -320,7 +320,7 @@ export default function SetupWizard({ embedded = false }) {
                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-red-500/40"
                >
                   <option value="">— Select VC —</option>
-                  {channels.voiceChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+                  {channels?.voiceChannels?.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
                </select>
             </div>
             <div className="space-y-4">
@@ -333,7 +333,7 @@ export default function SetupWizard({ embedded = false }) {
                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-4 text-white font-bold outline-none focus:border-red-500/40"
                >
                   <option value="">— Select Text Channel —</option>
-                  {channels.textChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+                  {channels?.textChannels?.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
                </select>
             </div>
           </div>
@@ -389,7 +389,7 @@ export default function SetupWizard({ embedded = false }) {
           <div className="space-y-4">
              <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic border-b border-white/5 pb-2">Milestone Rewards</div>
              <div className="space-y-3">
-                {rewards.map(reward => (
+                {Array.isArray(rewards) && rewards.map(reward => (
                   <div key={reward.id} className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl">
                     <div className="flex items-center gap-4">
                       <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center font-black text-purple-400 text-[10px] italic">{reward.required_hours}h</div>
@@ -407,7 +407,7 @@ export default function SetupWizard({ embedded = false }) {
                       <label className="text-[8px] font-black text-purple-400 uppercase tracking-widest">Awarded Role</label>
                       <select id="new-reward-role" className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-white">
                          <option value="">— Select —</option>
-                         {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                         {Array.isArray(roles) && roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                       </select>
                    </div>
                    <DungeonButton variant="mana" className="h-9 text-[9px]" onClick={() => {
@@ -447,14 +447,14 @@ export default function SetupWizard({ embedded = false }) {
              <label className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase italic">
                <Shield size={14} className="text-blue-400" /> Restricted Command Channel
              </label>
-             <select 
-               value={config.bot_command_channel_id}
-               onChange={e => setConfig({...config, bot_command_channel_id: e.target.value})}
-               className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-blue-500/40"
-             >
-               <option value="">— Select Channel —</option>
-               {channels.textChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
-             </select>
+              <select 
+                value={config.bot_command_channel_id}
+                onChange={e => setConfig({...config, bot_command_channel_id: e.target.value})}
+                className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-blue-500/40"
+              >
+                <option value="">— Select Channel —</option>
+                {channels?.textChannels?.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+              </select>
           </div>
 
           <div className="space-y-4">
@@ -467,7 +467,7 @@ export default function SetupWizard({ embedded = false }) {
                className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-bold outline-none focus:border-blue-500/40"
              >
                <option value="">— Select Channel —</option>
-               {channels.textChannels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+               {channels?.textChannels?.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
              </select>
           </div>
 
