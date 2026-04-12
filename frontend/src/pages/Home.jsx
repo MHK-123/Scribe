@@ -224,7 +224,7 @@ export default function Home() {
                 </ul>
                 <div className="side-label">QUICK ACCESS</div>
                 <ul className="side-links">
-                    <li><Link to="/setup"><Icon name="LayoutDashboard" size={18} /> Dashboard</Link></li>
+                    <li><Link to="/servers"><Icon name="LayoutDashboard" size={18} /> Dashboard</Link></li>
                     <li><a href={inviteLink} target="_blank" rel="noreferrer"><Icon name="UserPlus" size={18} /> Add to Discord</a></li>
                 </ul>
             </aside>
@@ -238,7 +238,7 @@ export default function Home() {
                         <h1 className="hero-title">Build Your <span className="accent-text">Study System</span> in Discord</h1>
                         <p className="hero-subtitle">Create and manage voice channels, run Pomodoro sessions, earn XP, and automate your server with a powerful productivity system.</p>
                         <div className="hero-btns">
-                            <Link to="/setup" className="btn btn-primary">
+                            <Link to="/servers" className="btn btn-primary">
                                 <Icon name="LayoutDashboard" size={18} /> Open Dashboard
                             </Link>
                             <a href={inviteLink} target="_blank" rel="noreferrer" className="btn btn-secondary">

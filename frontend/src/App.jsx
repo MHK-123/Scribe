@@ -82,7 +82,7 @@ const DashboardLayout = () => {
 
   // Auto-redirect if somehow navigating to an undefined guild
   if (guildId === 'undefined' || !guildId) {
-    return <Navigate to="/setup" replace />;
+    return <Navigate to="/servers" replace />;
   }
 
   const navItems = [
