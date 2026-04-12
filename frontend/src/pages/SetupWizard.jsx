@@ -146,7 +146,13 @@ export default function SetupWizard({ embedded = false }) {
       if (next) nextStep();
     } catch (err) {
       console.error(err);
-      setError("Protocols failed to   // ─── RENDERERS ──────────────────────────────────────────────────────────────
+      setError("Protocols failed to manifest.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── RENDERERS ──────────────────────────────────────────────────────────────
   
   const renderStep1 = () => (
     <div className="space-y-6">
