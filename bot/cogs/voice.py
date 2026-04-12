@@ -172,8 +172,8 @@ class VoiceSetup(commands.Cog):
                         channel = member.guild.get_channel(int(config['announcement_channel_id']))
                         if channel:
                             await channel.send(
-                                f'⚔️ **System Notification** | Hunter **{member.display_name}** reached '
-                                f'`{float(reward["required_hours"])}h` and earned {role.mention}!'
+                                f'⚔️ **System Notification** | {member.mention}, you have reached '
+                                f'`{float(reward["required_hours"])}h` and earned the **{role.name}** rank!'
                             )
                 except discord.HTTPException as e:
                     bot_logger.error(f'Failed to assign role reward {role.name}: {e}')

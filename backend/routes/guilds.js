@@ -265,34 +265,49 @@ router.get('/:id/leaderboard', async (req, res) => {
   try {
     let rows = [];
     if (type === 'monthly') {
-      const result = await query(
-        `SELECT user_id, rank, total_hours FROM monthly_leaderboards
-         WHERE guild_id = $1 AND month = EXTRACT(MONTH FROM NOW()) AND year = EXTRACT(YEAR FROM NOW())
-         ORDER BY rank ASC`,
-        [id]
-      );
-      rows = result.rows;
-    } else if (type === 'last_month') {
-      const result = await query(
-        `SELECT user_id, rank, total_hours FROM monthly_leaderboards
-         WHERE guild_id = $1
-           AND month = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
-           AND year  = EXTRACT(YEAR  FROM CURRENT_DATE - INTERVAL '1 month')
-         ORDER BY rank ASC`,
-        [id]
-      );
-      rows = result.rows;
-    } else {
-      // Default: all-time
+      // Aggregate from study_sessions for the current month
       const result = await query(
         `SELECT user_id, SUM(duration) AS total_duration
-         FROM study_sessions WHERE guild_id = $1
-         GROUP BY user_id ORDER BY total_duration DESC LIMIT 100`,
+         FROM study_sessions 
+         WHERE guild_id = $1 
+           AND EXTRACT(MONTH FROM join_time) = EXTRACT(MONTH FROM NOW())
+           AND EXTRACT(YEAR FROM join_time) = EXTRACT(YEAR FROM NOW())
+         GROUP BY user_id ORDER BY total_duration DESC LIMIT 5`,
+        [id]
+      );
+      rows = result.rows.map((row, i) => ({
+        user_id: row.user_id,
+        total_hours: (row.total_duration / 3600).toFixed(1),
+        rank: i + 1
+      }));
+    } else if (type === 'last_month') {
+      // Aggregate from study_sessions for the previous month
+      const result = await query(
+        `SELECT user_id, SUM(duration) AS total_duration
+         FROM study_sessions 
+         WHERE guild_id = $1
+           AND EXTRACT(MONTH FROM join_time) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+           AND EXTRACT(YEAR FROM join_time) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')
+         GROUP BY user_id ORDER BY total_duration DESC LIMIT 5`,
+        [id]
+      );
+      rows = result.rows.map((row, i) => ({
+        user_id: row.user_id,
+        total_hours: (row.total_duration / 3600).toFixed(1),
+        rank: i + 1
+      }));
+    } else {
+      // Default: all-time (Ancient Records) - MATCH DISCORD BOT SOURCE
+      const result = await query(
+        `SELECT user_id, total_study_hours as total_hours, level
+         FROM user_levels WHERE guild_id = $1
+         ORDER BY total_study_hours DESC LIMIT 5`,
         [id]
       );
       rows = result.rows.map((row, i) => ({
         user_id:     row.user_id,
-        total_hours: (row.total_duration / 3600).toFixed(2),
+        total_hours: parseFloat(row.total_hours).toFixed(1),
+        level:       row.level,
         rank:        i + 1,
       }));
     }
@@ -348,6 +363,48 @@ router.get('/:id/weekly-hours', async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch weekly data:', err);
     res.status(500).json({ error: 'Failed to fetch weekly data' });
+  }
+});
+
+// POST /guilds/:id/users/:userId/reset — Reset single user in this guild
+router.post('/:id/users/:userId/reset', authorizeGuild, async (req, res) => {
+  const { id, userId } = req.params;
+
+  try {
+    // 1. Fetch managed roles from config
+    const [configRes, rewardsRes] = await Promise.all([
+      query('SELECT top1_role_id, top2_role_id, top3_role_id, top10_role_id FROM guild_configs WHERE guild_id = $1', [id]),
+      query('SELECT role_id FROM study_role_rewards WHERE guild_id = $1', [id])
+    ]);
+
+    const roleIds = [];
+    if (configRes.rows[0]) {
+      const c = configRes.rows[0];
+      if (c.top1_role_id) roleIds.push(c.top1_role_id);
+      if (c.top2_role_id) roleIds.push(c.top2_role_id);
+      if (c.top3_role_id) roleIds.push(c.top3_role_id);
+      if (c.top10_role_id) roleIds.push(c.top10_role_id);
+    }
+    rewardsRes.rows.forEach(r => roleIds.push(r.role_id));
+
+    // 2. DB Wipe for single user in this specific guild
+    await query('UPDATE user_levels SET total_xp = 0, level = 0, total_study_hours = 0 WHERE guild_id = $1 AND user_id = $2', [id, userId]);
+    // Also remove from study_sessions for this month/context if desired (optional but cleaner)
+    // await query('DELETE FROM study_sessions WHERE guild_id = $1 AND user_id = $2', [id, userId]);
+
+    // 3. Role Stripping for single user
+    for (const roleId of roleIds) {
+      try {
+        await discordService.removeGuildMemberRole(id, userId, roleId);
+      } catch (e) {
+        console.warn(`[Reset]: Could not strip role ${roleId} from ${userId} - ${e.message}`);
+      }
+    }
+
+    res.json({ success: true, message: `The ritual is complete. Hunter ${userId} has been purified in this realm.` });
+  } catch (err) {
+    console.error('Manual User Reset Error:', err);
+    res.status(500).json({ error: 'Purification ritual failed.' });
   }
 });
 

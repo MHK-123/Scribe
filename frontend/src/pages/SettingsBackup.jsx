@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Upload, Shield, DatabaseBackup, Skull, Gem, ScrollText, AlertTriangle, Clock } from 'lucide-react';
+import { Download, Upload, Shield, DatabaseBackup, Skull, Gem, ScrollText, AlertTriangle, Clock, UserMinus, RotateCcw } from 'lucide-react';
 
 import MagicPanel from '../components/MagicPanel.jsx';
 import DungeonButton from '../components/DungeonButton.jsx';
@@ -18,6 +18,8 @@ export default function SettingsBackup() {
   const [channels, setChannels] = useState([]);
   const [savingTz, setSavingTz] = useState(false);
   const [savingBot, setSavingBot] = useState(false);
+  const [resetId, setResetId] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   React.useEffect(() => {
     // Aggressively reset state on server switch
@@ -113,6 +115,25 @@ export default function SettingsBackup() {
       alert('Failed to update bot command restrictions.');
     } finally {
       setSavingBot(false);
+    }
+  };
+
+  const handleResetUser = async () => {
+    if (!resetId.trim()) return alert('Identify the hunter you wish to purge.');
+    if (!window.confirm(`⚠️ WARNING: This ritual will permanently wipe XP and strip roles for hunter ${resetId} across THIS realm. This action cannot be undone. Proceed?`)) return;
+
+    setResetting(true);
+    try {
+      await axios.post(`${apiUrl}/guilds/${id}/users/${resetId}/reset`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`The ritual is complete. Hunter ${resetId} has been purified in this realm.`);
+      setResetId('');
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || 'The purification ritual failed.');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -306,6 +327,51 @@ export default function SettingsBackup() {
                </p>
             </div>
          </div>
+      </MagicPanel>
+
+      {/* Individual Hunter Reset (Migrated from Admin) */}
+      <MagicPanel className="p-8 border-red-500/10 bg-red-500/[0.01]" glowColor="rgba(239,68,68,0.05)">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-4">
+             <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+                <UserMinus className="text-red-500 w-8 h-8" />
+             </div>
+             <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-tight italic">Hunter Purification</h3>
+                <p className="text-xs text-slate-400 font-medium max-w-sm">
+                   Purge all XP, levels, and managed roles for a specific hunter in THIS realm. Use this for discipline or requested wipes.
+                </p>
+             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+             <div className="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  placeholder="HUNTER ID (User ID)"
+                  value={resetId}
+                  onChange={(e) => setResetId(e.target.value)}
+                  className="bg-black/60 border border-red-500/20 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder:text-red-900/40 outline-none focus:border-red-500/50 transition-all w-full"
+                />
+                <Skull className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500/20" size={16} />
+             </div>
+             <DungeonButton 
+               variant="danger" 
+               onClick={handleResetUser}
+               disabled={resetting}
+               className="w-full sm:w-auto h-12 shadow-[0_0_20px_rgba(239,68,68,0.1)]"
+             >
+                <div className="flex items-center gap-2">
+                   {resetting ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                   ) : (
+                      <RotateCcw size={16} />
+                   )}
+                   <span className="font-bold uppercase tracking-widest text-[11px]">Initiate Wipe</span>
+                </div>
+             </DungeonButton>
+          </div>
+        </div>
       </MagicPanel>
 
       <div className="flex justify-center pt-12 opacity-5">
