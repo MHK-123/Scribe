@@ -160,12 +160,19 @@ export default function SetupWizard({ embedded = false }) {
 
   const handleSavePomo = async () => {
     setSaving(true);
+    setError(null);
     try {
-      await api.post(`/pomodoro/${selectedGuild.id}/configs`, pomoConfig);
+      // Map frontend state to backend expected properties
+      const payload = {
+        ...pomoConfig,
+        auto_start: pomoConfig.enabled,
+        auto_stop: pomoConfig.enabled
+      };
+      await api.post(`/pomodoro/${selectedGuild.id}/config`, payload);
       nextStep();
     } catch (err) {
       console.error(err);
-      setError("Focus engine failure. Check ley-line stability.");
+      setError(err.response?.data?.error || "Focus engine failure. Check ley-line stability.");
     } finally {
       setSaving(false);
     }
@@ -393,10 +400,17 @@ export default function SetupWizard({ embedded = false }) {
              </div>
           </div>
 
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center gap-3 text-red-500 text-xs font-bold animate-pulse">
+               <AlertCircle size={16} />
+               {error}
+            </div>
+          )}
+
           <div className="pt-4 border-t border-white/5 flex items-center justify-between">
             <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors font-bold text-xs uppercase tracking-widest"><ArrowLeft size={16}/> Back</button>
             <DungeonButton variant="fire" icon={Save} onClick={handleSavePomo} disabled={saving || !pomoConfig.voice_channel_id || !pomoConfig.text_channel_id}>
-               IGNITE ENGINE
+               {saving ? "IGNITING..." : "IGNITE ENGINE"}
             </DungeonButton>
           </div>
         </div>
