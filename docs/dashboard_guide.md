@@ -7,6 +7,10 @@ Welcome to the **Dashboard Guide**. This guide details how to configure and mana
 ## 1. Settings
 *The core configuration for your server.*
 
+### Ritual Setup Manifest (Stabilized)
+-   **Step-by-Step Manifestation**: A multi-stage wizard ensures your server infrastructure (VCs, Categories, Focus Timers, and Rewards) is built without ley-line failures.
+-   **Validation**: Every node is verified in real-time before moving to the next cycle.
+
 ### Bot Command Channel
 - **Functionality**: Use this to designate a **single channel** where commands like `.l` and `.m` are allowed.
 - **Default Security**: If the bot cannot reach the database, it will **block** the command by default to prevent issues. 
@@ -47,20 +51,13 @@ Welcome to the **Dashboard Guide**. This guide details how to configure and mana
 
 ---
 
-## 4. Rewards and Leaderboard
-*Tracking and gamifying study time.*
-
-### Experience (XP) System
-- **Rate**: Earn 10 XP per minute of active voice session time.
-- **Leveling**: The bot automatically calculates levels based on total XP gained.
-
-### Role Rewards
-- **Automatic Assignment**: Configure Discord roles to be granted when a user reaches a specific level (e.g., "Level 10: Veteran Tracker").
-- **Persistence**: Roles are managed automatically as users level up.
+### Hunter Ranks
+- **Global Identity**: Plain usernames are now superseded by **Hunter Ranks** (S, A, B, C) based on your global standing and level.
+- **Visual Distinction**: Ranks feature unique thematic glows and branding in the Leaderboard and Dashboard Header.
 
 ### Leaderboard
-- **Top Users**: View the ranking of the most dedicated students in your server.
-- **Mentions**: Names are clickable Discord mentions for quickly viewing profiles.
+- **Top Hunters**: View the ranking of the most prestigious students in your sanctuary.
+- **Rank Labels**: Users are primarily identified by their Hunter Rank rather than just their username.
 
 ---
 

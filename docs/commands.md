@@ -31,8 +31,8 @@ Welcome to the **Commands List**, a guide to interacting with Scribe to manage t
 
 | Command | Description | Example Output |
 |---------|-------------|----------------|
-| `.m` | Displays your personal **Player Card**. | `PLAYER CARD ... User: <@123...>` |
-| `.l` | Displays the **Top Users** leaderboard. | `Rank 1 — <@123...> • Level 5 • 42.0h` |
+| `.m` | Displays your personal **Huntsman Profile**. | `S-RANK HUNTER ... @Horse` |
+| `.l` | Displays the **Top Hunters** leaderboard. | `S-RANK HUNTER — @Horse • Level 24` |
 | `.help` | Brings up the in-game Scribe Help panel. | `SYSTEM INTERFACE` |
 
 ---

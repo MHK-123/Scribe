@@ -16,11 +16,10 @@
 
 ---
 
-## 🔥 Prime Features
+*   **Hunter Rank Identity**: Plain usernames replaced with prestigious rankings (S-Rank, A-Rank) across the leaderboard and profile.
+*   **Ritual Setup Portal**: Hardened, multi-stage server configuration wizard for seamless manifestation.
 *   **Pomodoro Ignition**: Voice-channel triggered focus sessions with real-time web-sync.
 *   **XP Manifestation**: Advanced leveling system with automatic role synchronization.
-*   **Sentinel Security**: Granular command-channel locking and admin control.
-*   **Leaderboard Vision**: Interactive, multi-interval study rankings.
 
 ---
 
