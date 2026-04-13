@@ -20,6 +20,18 @@ class Admin(commands.Cog):
         embed.set_footer(text="Administrator Authority Verified")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="setup", description="Ignite the sanctuary calibration wizard")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def setup_wizard(self, interaction: discord.Interaction):
+        """Gateway to the Scribe Setup Wizard."""
+        embed = create_dungeon_embed(
+            "WIZARD CALIBRATION",
+            "Ignite the calibration ritual to manifest your sanctuary for the first time."
+        )
+        embed.add_field(name="Wizard Link", value=f"[IGNITE WIZARD](https://scribe-azure.vercel.app/setup)")
+        embed.set_footer(text="Administrator Authority Verified")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
     @commands.command(name='sync')
     @commands.is_owner()
     async def sync_global(self, ctx):

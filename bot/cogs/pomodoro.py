@@ -9,9 +9,11 @@ class PomodoroCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="pomodoro-create", description="Ignite a custom focus ritual in your current voice sanctuary")
+    pomodoro_group = app_commands.Group(name="pomodoro", description="Manifest and manage focus rituals")
+    
+    @pomodoro_group.command(name="start", description="Ignite a custom focus ritual in your current voice sanctuary")
     @app_commands.describe(focus_time="Focus duration in minutes", break_time="Break duration in minutes")
-    async def pomo_create(self, interaction: discord.Interaction, focus_time: int = 25, break_time: int = 5):
+    async def pomo_start(self, interaction: discord.Interaction, focus_time: int = 25, break_time: int = 5):
         """Manifest a focus ritual in any voice channel."""
         # 1. Voice Sanctuary Check
         if not interaction.user.voice or not interaction.user.voice.channel:
