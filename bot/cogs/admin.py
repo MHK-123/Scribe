@@ -32,6 +32,23 @@ class Admin(commands.Cog):
         embed.set_footer(text="Administrator Authority Verified")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @commands.command(name='clear-global')
+    @commands.is_owner()
+    async def clear_global_commands(self, ctx):
+        """[Owner Only] Purge the global command registry to fix duplicates."""
+        try:
+            bot_logger.info(f"Owner {ctx.author} is purging the global command tree.")
+            self.bot.tree.clear(guild=None)
+            await self.bot.tree.sync()
+            embed = create_success_embed(
+                "GLOBAL PURGE COMPLETE",
+                "Successfully wiped the global command registry. Doubles will vanish within 60 minutes."
+            )
+            await ctx.send(embed=embed)
+        except Exception as e:
+            bot_logger.error(f"Global purge failed: {e}")
+            await ctx.send(embed=create_error_embed("PURGE FAILED", str(e)))
+
     @commands.command(name='sync')
     @commands.is_owner()
     async def sync_global(self, ctx):

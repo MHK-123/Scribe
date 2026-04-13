@@ -102,8 +102,10 @@ class ScribeBot(commands.Bot):
         await self.wait_until_ready()
         try:
             bot_logger.info("🌀 [PHASE]: Manifesting Slash Rituals...")
-            await self.tree.sync()
-            bot_logger.info("✅ [PHASE]: Global command tree synced.")
+            # We skip global sync to prevent duplication and the 1-hour delay.
+            # Use $sync-guild for instant local manifestation.
+            # await self.tree.sync() 
+            bot_logger.info("✅ [PHASE]: Instant Local Protocol active.")
         except Exception as e:
             bot_logger.error(f"❌ [PHASE]: Tree sync failed: {e}")
 
