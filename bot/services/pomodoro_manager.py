@@ -217,10 +217,7 @@ class PomodoroManager:
             session = self.sessions[key]
             session.participants.pop(member.id, None)
             
-            # 1. Safety Pulse: Wait for Discord state to sync
-            await asyncio.sleep(2.0)
-            
-            # 2. Terminal Vacancy Check
+            # 1. Vacancy Check: Terminate immediately if no non-bot members remain
             active_hunters = [m for m in channel.members if not m.bot]
             if not active_hunters:
                 await self.stop_session(session, reason="Sanctuary Vacant")
@@ -285,16 +282,17 @@ class PomodoroManager:
         session.phase = 'stopped'
         if session.task: session.task.cancel()
 
+        # 1. Immediate HUD Deletion (to prevent ghost sessions)
         guild = self.bot.get_guild(session.guild_id)
         if guild and session.message_id:
             text_ch = guild.get_channel(session.text_channel_id)
             if text_ch:
                 try:
                     msg = await text_ch.fetch_message(session.message_id)
-                    embed = discord.Embed(title="🛡️ SESSION SEALED", description=f"The ritual has ended: **{reason}**", color=0xef4444)
-                    await msg.edit(embed=embed, view=None)
+                    await msg.delete()
                 except: pass
 
+        # 2. Database Decoupling
         async with self.pool.acquire() as conn:
             await conn.execute('UPDATE pomodoro_sessions SET is_active=FALSE WHERE guild_id=$1 AND voice_channel_id=$2', str(session.guild_id), str(session.vc_id))
         
