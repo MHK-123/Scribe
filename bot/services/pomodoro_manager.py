@@ -193,10 +193,10 @@ class PomodoroManager:
         # 1. Existing Session Check: Silent Addition
         if key in self.sessions:
             session = self.sessions[key]
-            # Only ping and refresh if the hunter is NEW to the session
             if member.id not in session.participants:
                 session.participants[member.id] = datetime.now(timezone.utc)
-                await self._refresh_message(session, announcement=f"⚔️ **{member.mention}** has joined the focus ritual!", force_repost=True)
+                # Force repost to ping the joining hunter and keep HUD at bottom
+                await self._refresh_message(session, announcement=f"⚔️ {member.mention} has joined the focus ritual!", force_repost=True)
             return
 
         # 2. Config Verification: Exact match only
@@ -236,9 +236,7 @@ class PomodoroManager:
             text_channel = guild.get_channel(int(target_id))
         
         if not text_channel:
-            # Fallback 1: System Channel
             text_channel = guild.system_channel
-            # Fallback 2: First available text channel
             if not text_channel:
                 text_channel = next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
 
@@ -257,11 +255,15 @@ class PomodoroManager:
         )
         self.sessions[key] = session
 
+        # Prepare initial mentions for everyone in VC
+        mentions = " ".join([m.mention for m in vc.members if not m.bot])
+        
         view = PomodoroView(self, key)
-        embed = _build_embed(session, [guild.get_member(uid).display_name for uid in session.participants if guild.get_member(uid)], self.bot)
+        members_names = [guild.get_member(uid).display_name for uid in session.participants if guild.get_member(uid)]
+        embed = _build_embed(session, members_names, self.bot)
         
         try:
-            msg = await text_channel.send(embed=embed, view=view)
+            msg = await text_channel.send(content=mentions, embed=embed, view=view)
             session.message_id = msg.id
             
             async with self.pool.acquire() as conn:
@@ -282,7 +284,7 @@ class PomodoroManager:
         session.phase = 'stopped'
         if session.task: session.task.cancel()
 
-        # 1. Immediate HUD Deletion (to prevent ghost sessions)
+        # 1. Absolute HUD Disposal (prevents ghost sessions)
         guild = self.bot.get_guild(session.guild_id)
         if guild and session.message_id:
             text_ch = guild.get_channel(session.text_channel_id)
