@@ -58,6 +58,7 @@ class ScribeBot(commands.Bot):
         # 1. Database Registry
         try:
             pool = await init_db()
+            self.pool = pool
             bot_logger.info("🗄️ [PHASE]: Database tether established.")
         except Exception as e:
             bot_logger.critical(f"❌ [CRITICAL]: Database manifest failed: {e}")
