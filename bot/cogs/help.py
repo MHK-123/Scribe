@@ -8,32 +8,55 @@ class Help(commands.Cog):
 
     @commands.command(name='help')
     async def help_command(self, ctx):
-        """Displays the terminal-style help menu."""
-        embed = create_dungeon_embed("SYSTEM COMMANDS", "")
+        """Displays the high-fidelity system manual."""
+        embed = create_dungeon_embed(
+            title="⚔️ SCRIBE CORE INTERFACE",
+            description=(
+                "*Welcome to the residency sentinel. Manage your voice sanctuaries "
+                "and track your progression with the following protocols.*\n\n"
+                "🔗 **[Scribe Web Portal](https://scribe-azure.vercel.app/)**"
+            ),
+            color=0x4b8bf5
+        )
         
-        # Format the commands like a structured list inside a code block
-        help_text = """```ansi
-[ COMMAND DIRECTORY ]
+        embed.add_field(
+            name="🔊 VOICE SANCTUARY",
+            value=(
+                "`/vc-name` :: Rename your current realm\n"
+                "`/vc-status` :: Set custom voice status\n"
+                "`/vc-kick` :: Banish a hunter from party\n"
+                "`/vc-ban` :: Bar a hunter from sanctuary\n"
+                "`/vc-invite` :: Summon a hunter (bypass locks)\n"
+                "`/vc-lock` | `/vc-unlock` :: Seal or unseal realm\n"
+                "`/vc-transfer` :: Handover sanctuary leadership"
+            ),
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📊 HUNTSMAN PERFORMANCE",
+            value=(
+                "`$m` :: Manifest your Hunter Profile\n"
+                "`$l` :: View the Global Leaderboard\n"
+                "`$help` :: Recalibrate system manual\n"
+                "`/level` :: Quick level check icon\n"
+                "`/rank` :: Global rankings overview"
+            ),
+            inline=False
+        )
 
--help     :: Displays this system manual
--l        :: Displays the top hunters leaderboard
--m        :: Displays your personal statistics
-
-[ VOICE / POMODORO DIRECTORY ]
-
-/vc-rename  :: Renames your current voice channel
-/vc-limit   :: Sets the member limit for your dungeon
-/vc-lock    :: Locks your channel (private ritual)
-/vc-unlock  :: Unlocks your channel for hunters
-/vc-invite  :: Summons a hunter to your sanctuary
-/pomodoro-create :: Manifest focus engine in current VC
-
-[ CONFIGURATION HUB ]
-
-/config     :: Access core calibration (Web Dashboard)
-```
-🔗 **[Scribe Dashboard](https://scribe-azure.vercel.app/setup)**"""
-        embed.description = help_text
+        embed.add_field(
+            name="⚙️ SYSTEM CONFIGURATION",
+            value=(
+                "`/setup` :: Launch calibration wizard\n"
+                "`/config` :: Access Web Dashboard rules\n"
+                "`/pomodoro start` :: Ignite focus engine in VC"
+            ),
+            inline=False
+        )
+        
+        embed.set_footer(text="Scribe Core v3.0 · Built for Focus")
+        
         await ctx.send(embed=embed)
 
 async def setup(bot):
