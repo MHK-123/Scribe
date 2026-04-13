@@ -26,13 +26,13 @@ export default function Home() {
         }
     };
 
-    const [activeCommand, setActiveCommand] = useState('-help');
+    const [activeCommand, setActiveCommand] = useState('$help');
     const inviteLink = "https://discord.com/api/oauth2/authorize?client_id=1488552752333455481&permissions=8&scope=bot%20applications.commands";
 
     const commandsData = [
-        { id: '-help', name: '-help', desc: 'Display global system status and loaded protocols', type: 'Legacy Prefix', cooldown: '5s', perms: 'User' },
-        { id: '-m', name: '-m (Profile)', desc: 'Fetch hunter profile card and XP progression', type: 'Legacy Prefix', cooldown: '10s', perms: 'User' },
-        { id: '-l', name: '-l (Leaderboard)', desc: 'Global rankings based on focus hours', type: 'Legacy Prefix', cooldown: '15s', perms: 'User' },
+        { id: '$help', name: '$help', desc: 'Display global system status and loaded protocols', type: 'Legacy Prefix', cooldown: '5s', perms: 'User' },
+        { id: '$m', name: '$m (Profile)', desc: 'Fetch hunter profile card and XP progression', type: 'Legacy Prefix', cooldown: '10s', perms: 'User' },
+        { id: '$l', name: '$l (Leaderboard)', desc: 'Global rankings based on focus hours', type: 'Legacy Prefix', cooldown: '15s', perms: 'User' },
         { id: 'slash-menu', name: 'Slash Commands', desc: 'Control your sanctuary with built-in voice commands', type: 'Slash Command', cooldown: '3s', perms: 'User/Admin' },
     ];
 
@@ -69,28 +69,30 @@ export default function Home() {
 
     const renderMockup = () => {
         switch(activeCommand) {
-            case '-help': return (
+            case '$help': return (
                 <BotMessageContainer>
                     <div className="discord-embed">
                         <div className="discord-embed-title">SYSTEM COMMANDS</div>
                         <div className="discord-category">[ COMMAND DIRECTORY ]</div>
                         <pre className="discord-mono-block">
-{`-help    :: Displays this system manual
--l       :: Displays the top hunters leaderboard
--m       :: Displays your personal statistics`}
+{`$help    :: Displays this system manual
+$l       :: Displays the top hunters leaderboard
+$m       :: Displays your personal statistics`}
                         </pre>
                         <div className="discord-category">[ VOICE / POMODORO DIRECTORY ]</div>
                         <pre className="discord-mono-block">
-{`/vc-rename :: Renames your current voice channel
-/vc-limit  :: Sets the member limit for your dungeon
-/vc-lock   :: Locks your channel (private ritual)
-/vc-unlock :: Unlocks your channel for hunters
-/vc-invite :: Summons a hunter to your sanctuary
-/pomodoro-create :: Manifest focus engine in current VC`}
+{`/vc-name    :: Renames your current voice channel
+/vc-status  :: Sets your custom voice status
+/vc-kick    :: Kick a member from your VC
+/vc-ban     :: Ban a user from your sanctuary
+/vc-lock    :: Locks your channel (private ritual)
+/vc-invite  :: Summons a hunter to your sanctuary
+/pomodoro start :: Manifest focus engine in current VC`}
                         </pre>
                         <div className="discord-category">[ CONFIGURATION HUB ]</div>
                         <pre className="discord-mono-block">
-{`/config    :: Access core calibration (Web Dashboard)`}
+{`/setup     :: Access core calibration wizard
+/config    :: Modify existing sanctuary rules`}
                         </pre>
                         <div style={{ marginTop: '1rem' }}>
                             <a href="#" className="discord-link"><Icon name="Link2" size={16}/> Scribe Dashboard</a>
@@ -98,8 +100,8 @@ export default function Home() {
                     </div>
                 </BotMessageContainer>
             );
-            case '-m': return (
-                <BotMessageContainer commandText="-m">
+            case '$m': return (
+                <BotMessageContainer commandText="$m">
                     <div className="discord-embed discord-embed-relative">
                         <div className="discord-embed-author">
                             <img src="https://ui-avatars.com/api/?name=H&background=333&color=fff" alt="Avatar"/>
@@ -129,8 +131,8 @@ export default function Home() {
                     </div>
                 </BotMessageContainer>
             );
-            case '-l': return (
-                <BotMessageContainer commandText="-l">
+            case '$l': return (
+                <BotMessageContainer commandText="$l">
                     <div className="discord-embed">
                         <div className="discord-embed-title">RANKING: TOP HUNTERS</div>
                         <div className="discord-embed-desc" style={{ marginBottom: '1rem', color: '#dbdee1' }}>Top hunters by focus time.</div>
@@ -181,36 +183,36 @@ export default function Home() {
                     <div className="slash-item">
                         <div className="slash-icon-wrap"><Icon name="Volume2" size={18} /></div>
                         <div className="slash-texts">
-                            <span className="slash-cmd">/vc-invite</span>
-                            <span className="slash-desc">Send a styled invite to a hunter in DMs</span>
+                            <span className="slash-cmd">/vc-name</span>
+                            <span className="slash-desc">Rename your sanctuary (Owner Only)</span>
                         </div>
                     </div>
                     <div className="slash-item">
                         <div className="slash-icon-wrap"><Icon name="Volume2" size={18} /></div>
                         <div className="slash-texts">
-                            <span className="slash-cmd">/vc-limit</span>
-                            <span className="slash-desc">Set member limit for your temp voice channel</span>
+                            <span className="slash-cmd">/vc-status</span>
+                            <span className="slash-desc">Set a custom voice realm status</span>
                         </div>
                     </div>
                     <div className="slash-item active">
                         <div className="slash-icon-wrap" style={{ background: '#3b82f6', color: '#fff', boxShadow: '0 0 15px #3b82f6' }}><Icon name="Volume2" size={18} /></div>
                         <div className="slash-texts">
                             <span className="slash-cmd">/vc-lock</span>
-                            <span className="slash-desc" style={{ color: '#cbd5e1' }}>Lock your temp voice channel</span>
+                            <span className="slash-desc" style={{ color: '#cbd5e1' }}>Lock your dungeon (Private Ritual)</span>
                         </div>
                     </div>
                     <div className="slash-item">
                         <div className="slash-icon-wrap"><Icon name="Volume2" size={18} /></div>
                         <div className="slash-texts">
-                            <span className="slash-cmd">/vc-rename</span>
-                            <span className="slash-desc">Rename your temp voice channel</span>
+                            <span className="slash-cmd">/vc-kick</span>
+                            <span className="slash-desc">Banish a hunter from your party</span>
                         </div>
                     </div>
                     <div className="slash-item">
                         <div className="slash-icon-wrap"><Icon name="Volume2" size={18} /></div>
                         <div className="slash-texts">
-                            <span className="slash-cmd">/vc-unlock</span>
-                            <span className="slash-desc">Unlock your temp voice channel</span>
+                            <span className="slash-cmd">/vc-invite</span>
+                            <span className="slash-desc">Summon a hunter to your portal</span>
                         </div>
                     </div>
                 </div>

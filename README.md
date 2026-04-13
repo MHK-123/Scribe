@@ -51,9 +51,12 @@ To maintain a minimal and high-fidelity project space, we've organized the repos
 
 ## 🚀 Ignition Commands
 For a full list of rituals, see [Commands Manifest](docs/commands.md).
-- `/pomodoro start`: Ignites a focus cycle.
-- `/level`: Manifests your current progress.
-- `/rank`: Displays the global leaderboard.
+- `$help`: Manifests the system manual and core protocols.
+- `/vc-name`: Rename your current voice sanctuary (Owner Only).
+- `/vc-status`: Set a custom status for your voice channel.
+- `/pomodoro start`: Ignites a focus cycle in your current VC.
+- `/level`: Manifests your current hunter progress.
+- `/rank`: Displays the global leaderboard rankings.
 
 ---
 

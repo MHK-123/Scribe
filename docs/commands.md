@@ -1,12 +1,11 @@
-# Scribe Commands
+# ⚔️ Scribe Commands Manifest
 
-Welcome to the **Commands List**, a guide to interacting with Scribe to manage temporary voice channels, track study sessions, and configure your Discord server.
+Welcome to the **Technical Rituals Manifest**, your guide to commanding the Scribe sentinel.
 
 ---
 
-## Command Security
+## 🛡️ Command Security
 > [!IMPORTANT]
-> **Channel Restriction**: Prefix commands (`.l`, `.m`, etc.) are limited to the **single channel** you configure in the Web Dashboard settings. 
 > - If used elsewhere, the bot will automatically delete the message and notify the user via DM.
 > - This restriction applies to everyone, including Administrators, to ensure zero clutter in general channels.
 

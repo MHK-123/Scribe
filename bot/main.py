@@ -46,7 +46,7 @@ from bot.core.socket_client import connect_socketIO
 class ScribeBot(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix=commands.when_mentioned_or('-'),
+            command_prefix=commands.when_mentioned_or('$'),
             intents=discord.Intents.all(),
             help_command=None
         )
@@ -110,7 +110,7 @@ class ScribeBot(commands.Bot):
     async def on_ready(self):
         activity = discord.Activity(
             type=discord.ActivityType.watching,
-            name="-help | Scribe Core"
+            name="$help | Scribe Core"
         )
         await self.change_presence(activity=activity)
         bot_logger.info(f"✅ [MANIFEST]: Sentinel '{self.user}' is online.")
@@ -169,9 +169,8 @@ class ScribeBot(commands.Bot):
                 f"Greetings, Citizens of **{guild.name}**.\n\n"
                 "I am **SCRIBE**, your sentinel for deep focus, voice sanctuary, and study tracking.\n\n"
                 "### 📜 NEXT STEPS\n"
-                "### 📜 NEXT STEPS\n"
                 "To activate my voice systems and pomodoro engines, use **`/setup`** or **`/config`** to access your dashboard.\n\n"
-                "*If slash commands are not visible yet, an Administrator can use **`-sync-guild`** to force manifestation.*\n\n"
+                "*If slash commands are not visible yet, an Administrator can use **`$sync-guild`** to force manifestation.*\n\n"
                 "**[Open Dashboard]**(https://scribe-bot.vercel.app/setup)"
             ),
             color=0x4b8bf5
