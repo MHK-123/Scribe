@@ -19,102 +19,196 @@ class VoiceSetup(commands.Cog):
         async with pool.acquire() as conn:
             return await conn.fetchval('SELECT owner_id FROM temp_voice_channels WHERE channel_id = $1', str(channel_id))
 
-    # ─── Slash Commands ───
-    @app_commands.command(name="vc-rename", description="Rename your temp voice channel")
-    @app_commands.describe(name="New name for the channel")
-    async def vc_rename(self, interaction: discord.Interaction, name: str):
-        if not interaction.user.voice:
-            return await interaction.response.send_message("You must be in a voice channel!", ephemeral=True)
+    async def check_authority(self, interaction: discord.Interaction, require_owner: bool = False):
+        """Standard authority ritual for VC commands."""
+        if not interaction.user.voice or not interaction.user.voice.channel:
+            await interaction.response.send_message("❌ You must be in a voice channel to use this ritual!", ephemeral=True)
+            return None
         
         channel = interaction.user.voice.channel
-        owner = await self.get_owner(channel.id)
-        if not owner or owner != str(interaction.user.id):
-            return await interaction.response.send_message("Only the room owner can rename this dungeon!", ephemeral=True)
+        owner_id = await self.get_owner(channel.id)
+        
+        # If no owner record, it's not a temp VC
+        if not owner_id:
+            await interaction.response.send_message("❌ This ritual can only be performed in temporary voice dungeons.", ephemeral=True)
+            return None
+
+        is_owner = owner_id == str(interaction.user.id)
+        is_admin = interaction.user.guild_permissions.administrator
+
+        if require_owner:
+            if not is_owner and not is_admin:
+                await interaction.response.send_message("❌ Only the dungeon host or a high admin can evoke this power!", ephemeral=True)
+                return None
+        else:
+            # For general management, just being in the VC is enough (as requested)
+            pass 
+
+        return channel
+
+    # ─── Commands ───
+
+    @app_commands.command(name="vc-name", description="Rename your voice dungeon")
+    @app_commands.describe(name="New name for the channel")
+    async def vc_name(self, interaction: discord.Interaction, name: str):
+        channel = await self.check_authority(interaction, require_owner=False)
+        if not channel: return
 
         try:
             await channel.edit(name=name)
             await interaction.response.send_message(f"✅ Dungeon renamed to **{name}**", ephemeral=True)
             bot_logger.info(f"User {interaction.user.name} renamed VC {channel.id} to {name}.")
         except discord.HTTPException as e:
-            bot_logger.error(f"Failed to edit channel name: {e}")
-            await interaction.response.send_message("❌ Failed to rename channel.", ephemeral=True)
+            await interaction.response.send_message(f"❌ Ritual failed: {e}", ephemeral=True)
 
-    @app_commands.command(name="vc-lock", description="Lock your temp voice channel")
-    async def vc_lock(self, interaction: discord.Interaction):
-        if not interaction.user.voice:
-            return await interaction.response.send_message("You must be in a voice channel!", ephemeral=True)
+    @app_commands.command(name="vc-status", description="Set a custom status for your voice dungeon")
+    @app_commands.describe(status="Text to display as the VC status")
+    async def vc_status(self, interaction: discord.Interaction, status: str):
+        channel = await self.check_authority(interaction, require_owner=False)
+        if not channel: return
+
+        # Raw HTTP Ritual for undocumented Voice Status
+        url = f"https://discord.com/api/v10/channels/{channel.id}/voice-status"
+        headers = {
+            "Authorization": f"Bot {self.bot.http.token}",
+            "Content-Type": "application/json"
+        }
         
-        channel = interaction.user.voice.channel
-        owner = await self.get_owner(channel.id)
-        if not owner or owner != str(interaction.user.id):
-            return await interaction.response.send_message("Only the room owner can lock this dungeon!", ephemeral=True)
+        try:
+            async with self.bot.http._HTTPClient__session.put(url, headers=headers, json={"status": status}) as resp:
+                if resp.status == 204:
+                    await interaction.response.send_message(f"✅ Status manifested: **{status}**", ephemeral=True)
+                else:
+                    await interaction.response.send_message("❌ The Discord gateway rejected the status change.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Failed to reach the status gateway: {e}", ephemeral=True)
+
+    @app_commands.command(name="vc-lock", description="Lock your dungeon to prevent new entries")
+    async def vc_lock(self, interaction: discord.Interaction):
+        channel = await self.check_authority(interaction, require_owner=True)
+        if not channel: return
 
         overwrite = channel.overwrites_for(interaction.guild.default_role)
         overwrite.connect = False
         try:
             await channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
-            await interaction.response.send_message("🔓 Dungeon locked. No new hunters can join.", ephemeral=True)
-        except discord.HTTPException as e:
+            await interaction.response.send_message("🔒 Dungeon locked. No new hunters can join.", ephemeral=True)
+        except discord.HTTPException:
             await interaction.response.send_message("❌ Failed to lock channel.", ephemeral=True)
 
-    @app_commands.command(name="vc-unlock", description="Unlock your temp voice channel")
+    @app_commands.command(name="vc-unlock", description="Unlock your dungeon for free entry")
     async def vc_unlock(self, interaction: discord.Interaction):
-        if not interaction.user.voice:
-            return await interaction.response.send_message("You must be in a voice channel!", ephemeral=True)
-        
-        channel = interaction.user.voice.channel
-        owner = await self.get_owner(channel.id)
-        if not owner or owner != str(interaction.user.id):
-            return await interaction.response.send_message("Only the room owner can unlock this dungeon!", ephemeral=True)
+        channel = await self.check_authority(interaction, require_owner=True)
+        if not channel: return
 
         overwrite = channel.overwrites_for(interaction.guild.default_role)
         overwrite.connect = True
         try:
             await channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
             await interaction.response.send_message("🔓 Dungeon unlocked. Hunters may enter freely.", ephemeral=True)
-        except discord.HTTPException as e:
+        except discord.HTTPException:
             await interaction.response.send_message("❌ Failed to unlock channel.", ephemeral=True)
 
-    @app_commands.command(name="vc-limit", description="Set member limit for your temp voice channel")
-    @app_commands.describe(limit="Member limit (0 to 99)")
+    @app_commands.command(name="vc-kick", description="Eject a member from your dungeon")
+    @app_commands.describe(member="Member to eject")
+    async def vc_kick(self, interaction: discord.Interaction, member: discord.Member):
+        channel = await self.check_authority(interaction, require_owner=True)
+        if not channel: return
+
+        if member.voice is None or member.voice.channel.id != channel.id:
+            return await interaction.response.send_message("❌ That hunter is not within your dungeon walls.", ephemeral=True)
+
+        try:
+            await member.move_to(None, reason=f"Ejected by host {interaction.user}")
+            await interaction.response.send_message(f"👢 **{member.display_name}** has been ejected from the dungeon.", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ I lack the authority to eject that hunter.", ephemeral=True)
+
+    @app_commands.command(name="vc-transfer", description="Transfer host power to another hunter in the dungeon")
+    @app_commands.describe(member="New host")
+    async def vc_transfer(self, interaction: discord.Interaction, member: discord.Member):
+        channel = await self.check_authority(interaction, require_owner=False)
+        if not channel: return
+
+        if member.voice is None or member.voice.channel.id != channel.id:
+            return await interaction.response.send_message("❌ The target must be inside the dungeon to receive host power.", ephemeral=True)
+
+        pool = get_pool()
+        if not pool: return
+        async with pool.acquire() as conn:
+            await conn.execute('UPDATE temp_voice_channels SET owner_id = $1 WHERE channel_id = $2', str(member.id), str(channel.id))
+        
+        await interaction.response.send_message(f"👑 Host power transferred to **{member.display_name}**.", ephemeral=True)
+
+    @app_commands.command(name="vc-ban", description="Ban a hunter from entering your dungeon")
+    @app_commands.describe(member="Member to ban")
+    async def vc_ban(self, interaction: discord.Interaction, member: discord.Member):
+        channel = await self.check_authority(interaction, require_owner=True)
+        if not channel: return
+
+        try:
+            # Deny connect permission
+            await channel.set_permissions(member, connect=False, reason=f"Banned by {interaction.user}")
+            
+            # Kick if currently inside
+            if member.voice and member.voice.channel.id == channel.id:
+                await member.move_to(None)
+                
+            await interaction.response.send_message(f"🚫 **{member.display_name}** has been banned from this dungeon.", ephemeral=True)
+        except discord.HTTPException:
+            await interaction.response.send_message("❌ Failed to manifest the ban.", ephemeral=True)
+
+    @app_commands.command(name="vc-unban", description="Revoke a dungeon ban for a hunter")
+    @app_commands.describe(member="Member to unban")
+    async def vc_unban(self, interaction: discord.Interaction, member: discord.Member):
+        channel = await self.check_authority(interaction, require_owner=False)
+        if not channel: return
+
+        try:
+            await channel.set_permissions(member, overwrite=None, reason=f"Unbanned by {interaction.user}")
+            await interaction.response.send_message(f"✅ Ban revoked for **{member.display_name}**.", ephemeral=True)
+        except discord.HTTPException:
+            await interaction.response.send_message("❌ Failed to revoke the ban.", ephemeral=True)
+
+    @app_commands.command(name="vc-limit", description="Set hunter capacity for your dungeon")
+    @app_commands.describe(limit="Capacity (0 to 99)")
     async def vc_limit(self, interaction: discord.Interaction, limit: int):
-        if not interaction.user.voice:
-            return await interaction.response.send_message("You must be in a voice channel!", ephemeral=True)
+        channel = await self.check_authority(interaction, require_owner=True)
+        if not channel: return
         
         if limit < 0 or limit > 99:
-            return await interaction.response.send_message("Limit must be between 0 and 99.", ephemeral=True)
-
-        channel = interaction.user.voice.channel
-        owner = await self.get_owner(channel.id)
-        if not owner or owner != str(interaction.user.id):
-            return await interaction.response.send_message("Only the room owner can modify this dungeon!", ephemeral=True)
+            return await interaction.response.send_message("Capacity must be between 0 and 99.", ephemeral=True)
 
         try:
             await channel.edit(user_limit=limit)
-            await interaction.response.send_message(f"✅ Member limit set to **{limit}**.", ephemeral=True)
-        except discord.HTTPException as e:
-            await interaction.response.send_message("❌ Failed to change limit.", ephemeral=True)
+            await interaction.response.send_message(f"✅ Dungeon capacity set to **{limit}**.", ephemeral=True)
+        except discord.HTTPException:
+            await interaction.response.send_message("❌ Failed to change capacity.", ephemeral=True)
 
-    @app_commands.command(name="vc-invite", description="Send a styled invite to a hunter in DMs")
-    @app_commands.describe(member="Member to invite")
+    @app_commands.command(name="vc-invite", description="Summon a hunter to your dungeon (even if locked)")
+    @app_commands.describe(member="Hunter to summon")
     async def vc_invite(self, interaction: discord.Interaction, member: discord.Member):
-        if not interaction.user.voice:
-            return await interaction.response.send_message("You must be in a voice channel!", ephemeral=True)
-        
-        channel = interaction.user.voice.channel
+        channel = await self.check_authority(interaction, require_owner=False)
+        if not channel: return
+
         try:
+            # 1. Grant explicit connect permission in case room is locked
+            await channel.set_permissions(member, connect=True, reason=f"Invited by {interaction.user}")
+
+            # 2. Manifest Invite
             invite = await channel.create_invite(max_age=3600, max_uses=1)
             embed = create_dungeon_embed("⚔️ DUNGEON INVITATION", f"You have been summoned to join **{interaction.user.display_name}**'s party!")
-            embed.add_field(name="Channel", value=f"`{channel.name}`", inline=True)
-            embed.add_field(name="Link", value=f"[JOIN NOW]({invite.url})", inline=True)
+            embed.add_field(name="Dungeon", value=f"`{channel.name}`", inline=True)
+            embed.add_field(name="Portal", value=f"[ENTER NOW]({invite.url})", inline=True)
             embed.set_thumbnail(url=interaction.guild.icon.url if interaction.guild.icon else None)
             
             await member.send(embed=embed)
-            await interaction.response.send_message(f"✅ Summon sent to **{member.display_name}**.", ephemeral=True)
+            await interaction.response.send_message(f"✅ Summon sent to **{member.display_name}**. (Access granted)", ephemeral=True)
         except discord.Forbidden:
-            await interaction.response.send_message(f"❌ Could not reach **{member.display_name}**. (DMs closed)", ephemeral=True)
-        except ValueError as e:
+            await interaction.response.send_message(f"❌ Could not reach **{member.display_name}**. (Their DMs are barred)", ephemeral=True)
+        except Exception as e:
             bot_logger.error(f"Invite Error: {e}")
+            await interaction.response.send_message("❌ Encountered an anomaly while creating the portal.", ephemeral=True)
 
     # ─── XP Processing ───
     async def _process_xp(self, conn, member: discord.Member, guild_id: str, xp_gained: int, hours_gained: float, config):
