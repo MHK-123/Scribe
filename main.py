@@ -9,20 +9,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ─── Scribe Universal Launcher (v6.1 - Hybrid) ────────────────────────────────
 
-# ─── Signature Shield: Resolving AIOHTTP Parameter Collision ──────────────────
-# This intelligent proxy dynamically filters out any modern parameters (like 'ws_close')
-# that your version of aiohttp doesn't understand, preventing the 'TypeError' crash.
-_original_timeout = aiohttp.ClientTimeout
-class ResilientTimeout(_original_timeout):
-    def __new__(cls, *args, **kwargs):
-        params = inspect.signature(_original_timeout).parameters
-        filtered = {k: v for k, v in kwargs.items() if k in params}
-        return _original_timeout(*args, **filtered)
-
-# Apply the shield globally
-aiohttp.ClientTimeout = ResilientTimeout
-aiohttp.ClientNSTimeout = ResilientTimeout
-aiohttp.ClientWSTimeout = ResilientTimeout
+# Force unbuffered output
 
 # Force unbuffered output
 sys.stdout.reconfigure(line_buffering=True)

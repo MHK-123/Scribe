@@ -7,22 +7,6 @@ import time
 import aiohttp
 import inspect
 
-# ─── Signature Shield: Resolving AIOHTTP Parameter Collision ──────────────────
-# This intelligent proxy dynamically filters out any modern parameters (like 'ws_close')
-# that your version of aiohttp doesn't understand, preventing the 'TypeError' crash.
-_original_timeout = aiohttp.ClientTimeout
-class ResilientTimeout(_original_timeout):
-    def __new__(cls, *args, **kwargs):
-        # We check the actual signature of the base class in this environment
-        params = inspect.signature(_original_timeout).parameters
-        filtered = {k: v for k, v in kwargs.items() if k in params}
-        return _original_timeout(*args, **filtered)
-
-# Apply the shield globally to the process
-aiohttp.ClientTimeout = ResilientTimeout
-aiohttp.ClientNSTimeout = ResilientTimeout
-aiohttp.ClientWSTimeout = ResilientTimeout
-    
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ─── Path Guard: Anchoring Scribe Core ────────────────────────────────────────
@@ -228,12 +212,10 @@ def main_entry():
 
     # 2. Execution (Single Pass Logic)
     try:
-        import traceback
         bot_logger.info("🌐 [IGNITION]: Synchronizing with Discord Gateway...")
         bot.run(TOKEN, log_handler=None)
     except Exception as e:
-        error_trace = traceback.format_exc()
-        bot_logger.error(f"💀 [IGNITION]: Sentinel Fatal Flatline: {e}\n{error_trace}")
+        bot_logger.error(f"💀 [IGNITION]: Sentinel Fatal Flatline: {e}")
         raise 
 
     bot_logger.info("👋 [IGNITION]: Scribe process extinguished.")
