@@ -51,36 +51,48 @@ class Admin(commands.Cog):
 
     @commands.command(name='sync')
     @commands.is_owner()
-    async def sync_global(self, ctx):
+    async def legacy_sync_handler(self, ctx):
         """[Owner Only] Sync slash commands globally."""
+        await self.sync_global_ritual(ctx)
+
+    @commands.command(name='sync-global')
+    @commands.is_owner()
+    async def sync_global_command(self, ctx):
+        """[Owner Only] Ritual to propagate Global Command Nodes."""
+        await self.sync_global_ritual(ctx)
+
+    async def sync_global_ritual(self, ctx):
         try:
-            bot_logger.info(f"Admin {ctx.author} triggered global sync.")
+            bot_logger.info(f"🛡️ [ADMIN]: {ctx.author} initiated Global Command Ritual.")
             synced = await self.bot.tree.sync()
             embed = create_success_embed(
                 "GLOBAL SYNC COMPLETE",
-                f"Successfully propagated `{len(synced)}` command nodes to the global network."
+                f"Successfully manifested `{len(synced)}` global command nodes across all realms.\n*Note: Deployment may take up to 24h to stabilize.*"
             )
             await ctx.send(embed=embed)
         except Exception as e:
             bot_logger.error(f"Global sync failed: {e}")
             await ctx.send(embed=create_error_embed("SYNC FAILED", str(e)))
 
-    @commands.command(name='sync-guild')
+    @commands.command(name='purge-guild-commands', aliases=['clear-guild', 'sync-guild'])
     @commands.has_permissions(administrator=True)
-    async def sync_guild_command(self, ctx):
-        """[Admin Only] Force sync commands to this guild."""
+    async def purge_guild_commands(self, ctx):
+        """[Admin Only] Clear duplicate guild-specific commands."""
         try:
-            bot_logger.info(f"Admin {ctx.author} triggered guild sync for {ctx.guild.id}.")
-            self.bot.tree.copy_global_to(guild=ctx.guild)
-            synced = await self.bot.tree.sync(guild=ctx.guild)
+            bot_logger.info(f"🛡️ [ADMIN]: {ctx.author} purging local nodes in guild {ctx.guild.id}.")
+            
+            # THE CURE: Clear guild-specific overrides so only Global ones remain
+            self.bot.tree.clear(guild=ctx.guild)
+            await self.bot.tree.sync(guild=ctx.guild)
+            
             embed = create_success_embed(
-                "GUILD SYNC COMPLETE",
-                f"Successfully updated `{len(synced)}` local command nodes for this realm."
+                "GUILD PURGE COMPLETE",
+                "Localized command overrides have been extinguished. Only the Global Registry remains active in this realm.\n\n**Duplicates should vanish from your slash menu instantly.**"
             )
             await ctx.send(embed=embed)
         except Exception as e:
-            bot_logger.error(f"Guild sync failed: {e}")
-            await ctx.send(embed=create_error_embed("SYNC FAILED", str(e)))
+            bot_logger.error(f"Guild purge failed: {e}")
+            await ctx.send(embed=create_error_embed("PURGE FAILED", str(e)))
 
     async def cog_command_error(self, ctx, error):
         if isinstance(error, (commands.NotOwner, commands.MissingPermissions)):

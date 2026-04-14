@@ -57,8 +57,8 @@ class ScribeBot(commands.Bot):
         # 3. SocketIO Gateway (Non-blocking resilience)
         asyncio.create_task(self.ignite_socketIO())
 
-        # 4. Command Tree Sync
-        asyncio.create_task(self.sync_tree())
+        # 4. Command Tree Sync (Manual Only Ritual)
+        # Global sync should be triggered manually via $sync to prevent duplicates.
 
         # 5. Cogs Manifestation
         initial_extensions = [
@@ -160,13 +160,8 @@ class ScribeBot(commands.Bot):
                                  headers={'x-bot-token': TOKEN}, timeout=5)
         except: pass
 
-        # 3. Instant Command Manifestation (Slash Ritual)
-        try:
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
-            bot_logger.info(f"✅ [PHASE]: Local command tree synced for guild {guild.id}.")
-        except Exception as e:
-            bot_logger.error(f"❌ [PHASE]: Local tree sync failed: {e}")
+        # 3. Command Manifestation (Note: Using Global Registry)
+        # Guild-specific sync is disabled to fix duplication anomalies.
 
         # 4. Cinematic Welcome Ritual
         embed = discord.Embed(

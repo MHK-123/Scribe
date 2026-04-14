@@ -274,19 +274,47 @@ export const discordService = {
   },
 
   /**
+   * List ALL guild members (Bot Token).
+   * Uses iterative pagination with the 'after' parameter to fetch every member.
+   */
+  listAllGuildMembers: async (guildId) => {
+    let allMembers = [];
+    let lastId = '0';
+    let hasMore = true;
+
+    try {
+      console.log(`📡 [DiscordService]: Scrying all inhabitants of realm ${guildId}...`);
+      while (hasMore) {
+        const { data } = await discordClient.get(`/guilds/${guildId}/members?limit=1000&after=${lastId}`, {
+          headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
+        });
+
+        if (data.length === 0) {
+          hasMore = false;
+        } else {
+          allMembers = allMembers.concat(data);
+          lastId = data[data.length - 1].user.id;
+          if (data.length < 1000) hasMore = false;
+        }
+      }
+      console.log(`✅ [DiscordService]: Successfully scryed ${allMembers.length} members in realm ${guildId}.`);
+      return allMembers;
+    } catch (err) {
+      console.error(`❌ [DiscordService]: Failed to scry realm ${guildId} populations:`, err.response?.data || err.message);
+      return [];
+    }
+  },
+
+  /**
    * List guild members with a specific role (Bot Token).
-   * Note: This requires pagination for large guilds, but we usually only care about the top users.
+   * Note: Refined to handle pagination via the new listAllGuildMembers helper.
    */
   getMembersWithRole: async (guildId, roleId) => {
     try {
-      // In a real production environment with 10k+ members, we'd use the gateway or iterate pagination.
-      // For now, we fetch up to 1000 members and filter.
-      const { data } = await discordClient.get(`/guilds/${guildId}/members?limit=1000`, {
-        headers: { Authorization: `Bot ${config.DISCORD_TOKEN}` },
-      });
-      return data.filter(m => m.roles.includes(roleId));
+      const allMembers = await discordService.listAllGuildMembers(guildId);
+      return allMembers.filter(m => m.roles.includes(roleId));
     } catch (err) {
-      console.error(`❌ [DiscordService]: Failed to list members in ${guildId}:`, err.message);
+      console.error(`❌ [DiscordService]: Failed to list members with role ${roleId} in ${guildId}:`, err.message);
       return [];
     }
   }

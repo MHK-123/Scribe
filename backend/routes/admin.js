@@ -143,15 +143,15 @@ router.post('/guilds/:id/reset', async (req, res) => {
       query('SELECT role_id FROM study_role_rewards WHERE guild_id = $1', [id])
     ]);
 
-    const roleIds = new Set();
+    const targetRoleIds = new Set();
     if (configRes.rows[0]) {
       const c = configRes.rows[0];
-      if (c.top1_role_id) roleIds.add(c.top1_role_id);
-      if (c.top2_role_id) roleIds.add(c.top2_role_id);
-      if (c.top3_role_id) roleIds.add(c.top3_role_id);
-      if (c.top10_role_id) roleIds.add(c.top10_role_id);
+      if (c.top1_role_id) targetRoleIds.add(c.top1_role_id);
+      if (c.top2_role_id) targetRoleIds.add(c.top2_role_id);
+      if (c.top3_role_id) targetRoleIds.add(c.top3_role_id);
+      if (c.top10_role_id) targetRoleIds.add(c.top10_role_id);
     }
-    rewardsRes.rows.forEach(r => roleIds.add(r.role_id));
+    rewardsRes.rows.forEach(r => targetRoleIds.add(r.role_id));
 
     // 2. Perform DB Wipe (Level data, leaderboards, and sessions)
     await query('BEGIN');
@@ -165,22 +165,39 @@ router.post('/guilds/:id/reset', async (req, res) => {
       throw err;
     }
 
-    // 3. Role Cleanup (Async/Best-effort to prevent timeout)
-    // We launch this in the background if there are many roles
+    // 3. Enhanced Role Cleanup (Paginated + Batched)
     const cleanupRoles = async () => {
-      for (const roleId of roleIds) {
-        const members = await discordService.getMembersWithRole(id, roleId);
-        console.log(`🧹 [ADMIN]: Stripping role ${roleId} from ${members.length} members...`);
-        for (const member of members) {
-          await discordService.removeGuildMemberRole(id, member.user.id, roleId);
-          // Small delay to be polite to Discord API
-          await new Promise(r => setTimeout(r, 500));
+      try {
+        const allMembers = await discordService.listAllGuildMembers(id);
+        const membersToStrip = allMembers.filter(m => m.roles.some(r => targetRoleIds.has(r)));
+        
+        console.log(`🧹 [ADMIN]: Identifying ${membersToStrip.length} members with target roles in realm ${id}...`);
+
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < membersToStrip.length; i += BATCH_SIZE) {
+          const batch = membersToStrip.slice(i, i + BATCH_SIZE);
+          await Promise.all(batch.map(async (member) => {
+            const rolesOnMember = member.roles.filter(r => targetRoleIds.has(r));
+            for (const roleId of rolesOnMember) {
+              await discordService.removeGuildMemberRole(id, member.user.id, roleId);
+            }
+          }));
+          // Small safety buffer between batches to allow Discord Gateway to breathe
+          await new Promise(r => setTimeout(r, 200));
         }
+        console.log(`✅ [ADMIN]: Role purification complete for realm ${id}.`);
+      } catch (e) {
+        console.error(`❌ [ADMIN]: Role cleanup ritual failed:`, e.message);
       }
     };
+    
+    // Launch in background
     cleanupRoles();
 
-    res.json({ success: true, message: 'The realm has been purified. DB records wiped, roles are being stripped in the background.' });
+    res.json({ 
+      success: true, 
+      message: 'Realm reset complete. All hunter data and level roles have been cleared.' 
+    });
   } catch (err) {
     console.error('Admin Full Reset Error:', err);
     res.status(500).json({ error: 'The purification ritual failed.' });
@@ -217,7 +234,7 @@ router.post('/guilds/:id/users/:userId/reset', async (req, res) => {
       await discordService.removeGuildMemberRole(id, userId, roleId);
     }
 
-    res.json({ success: true, message: `Hunter ${userId} has been reset.` });
+    res.json({ success: true, message: `The ritual is complete. Hunter ${userId} has been purified.` });
   } catch (err) {
     console.error('Admin User Reset Error:', err);
     res.status(500).json({ error: 'Could not reset individual hunter progress.' });
