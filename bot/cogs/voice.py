@@ -193,23 +193,34 @@ class VoiceSetup(commands.Cog):
         if not channel: return
 
         try:
-            # 1. Grant explicit connect permission in case room is locked
-            await channel.set_permissions(member, connect=True, reason=f"Invited by {interaction.user}")
+            # 1. Manifest Invite
+            try:
+                invite = await channel.create_invite(max_age=3600, max_uses=1, reason=f"Ritual Invite for {member.name}")
+            except discord.Forbidden:
+                return await interaction.response.send_message("❌ Manifestation Fault: I lack the authority to create portals in this dungeon (Create Invite permission missing).", ephemeral=True)
 
-            # 2. Manifest Invite
-            invite = await channel.create_invite(max_age=3600, max_uses=1)
+            # 2. Grant explicit connect permission in case room is locked
+            try:
+                await channel.set_permissions(member, connect=True, reason=f"Invited by {interaction.user}")
+            except discord.Forbidden:
+                # If we fail here, we still try to send the invite, but warn the user
+                pass
+
+            # 3. Summons Ritual (DM)
             embed = create_dungeon_embed("⚔️ DUNGEON INVITATION", f"You have been summoned to join **{interaction.user.display_name}**'s party!")
             embed.add_field(name="Dungeon", value=f"`{channel.name}`", inline=True)
             embed.add_field(name="Portal", value=f"[ENTER NOW]({invite.url})", inline=True)
             embed.set_thumbnail(url=interaction.guild.icon.url if interaction.guild.icon else None)
             
-            await member.send(embed=embed)
-            await interaction.response.send_message(f"✅ Summon sent to **{member.display_name}**. (Access granted)", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.response.send_message(f"❌ Could not reach **{member.display_name}**. (Their DMs are barred)", ephemeral=True)
+            try:
+                await member.send(embed=embed)
+                await interaction.response.send_message(f"✅ Summon sent to **{member.display_name}**. (Access granted)", ephemeral=True)
+            except discord.Forbidden:
+                await interaction.response.send_message(f"❌ Summoning Fault: Could not reach **{member.display_name}**. (Their DMs are barred)", ephemeral=True)
+                
         except Exception as e:
             bot_logger.error(f"Invite Error: {e}")
-            await interaction.response.send_message("❌ Encountered an anomaly while creating the portal.", ephemeral=True)
+            await interaction.response.send_message(f"❌ Encountered an anomaly while creating the portal: `{e}`", ephemeral=True)
 
     # ─── XP Processing ───
     async def _process_xp(self, conn, member: discord.Member, guild_id: str, xp_gained: int, hours_gained: float, config):
