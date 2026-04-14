@@ -67,8 +67,7 @@ class ScribeBot(commands.Bot):
         # 2. Subsystems
         from bot.services.pomodoro_manager import PomodoroManager
         self.pomodoro_manager = PomodoroManager(self, pool)
-        await self.pomodoro_manager.load_active_sessions()
-        bot_logger.info("⚔️ [PHASE]: Pomodoro services active.")
+        bot_logger.info("⚔️ [PHASE]: Pomodoro services initialized (Awaiting Readiness).")
 
         # 3. SocketIO Gateway (Non-blocking resilience)
         asyncio.create_task(self.ignite_socketIO())
@@ -117,8 +116,17 @@ class ScribeBot(commands.Bot):
         await self.change_presence(activity=activity)
         bot_logger.info(f"✅ [MANIFEST]: Sentinel '{self.user}' is online.")
 
-        # ─── Owner Sync Ritual (Backfill) ───
+        # ─── Failsafe Ignition Wrapper ───
         try:
+            # Buffer: Ensure gateway cache is fully Manifested
+            await self.wait_until_ready()
+            await asyncio.sleep(5) 
+            
+            # 1. Restore Active Rituals (Pomodoro)
+            if self.pomodoro_manager:
+                await self.pomodoro_manager.load_active_sessions()
+
+            # 2. Owner Sync Ritual (Backfill)
             async with self.pool.acquire() as conn:
                 for guild in self.guilds:
                     gid = getattr(guild, 'id', None)
@@ -130,9 +138,9 @@ class ScribeBot(commands.Bot):
                             ON CONFLICT (guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
                             WHERE guild_configs.owner_id IS NULL
                         ''', str(gid), str(oid))
+            bot_logger.info("⚔️ [PHASE]: Realm ownership reconciliation complete.")
         except Exception as e:
-            bot_logger.warning(f"⚠️ [IGNITION]: Guild reconciliation bypassed: {e}")
-        bot_logger.info("⚔️ [PHASE]: Realm ownership reconciliation complete.")
+            bot_logger.error(f"💀 [IGNITION FAULT]: Rituals aborted but Sentinel remains stable: {e}")
 
     async def on_guild_join(self, guild: discord.Guild):
         bot_logger.info(f"🛡️ [PROTOCOL]: Sentinel entering new realm: {guild.name} ({guild.id})")

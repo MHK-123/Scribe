@@ -163,22 +163,43 @@ class PomodoroManager:
         self.sessions: dict[tuple, PomodoroSession] = {}
 
     async def load_active_sessions(self):
-        """Restores sessions from DB with error resilience."""
+        """Restores sessions from DB with strict gateway state verification."""
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch('SELECT * FROM pomodoro_sessions WHERE is_active = TRUE')
+            try:
+                rows = await conn.fetch('SELECT * FROM pomodoro_sessions WHERE is_active = TRUE')
+            except Exception as e:
+                bot_logger.error(f"Failed to fetch active sessions: {e}")
+                return
+
             for row in rows:
                 try:
-                    guild = self.bot.get_guild(int(row['guild_id']))
-                    if not guild: continue
-                    vc = guild.get_channel(int(row['voice_channel_id']))
-                    if not vc: continue
+                    gid = int(row['guild_id'])
+                    vcid = int(row['voice_channel_id'])
                     
-                    key = (int(row['guild_id']), int(row['voice_channel_id']))
-                    participants = {m.id: datetime.now(timezone.utc) for m in vc.members if not m.bot}
+                    guild = self.bot.get_guild(gid)
+                    if not guild:
+                        bot_logger.warning(f"Restoration Skip: Guild {gid} not in cache.")
+                        continue
+                        
+                    vc = guild.get_channel(vcid)
+                    if not vc:
+                        bot_logger.warning(f"Restoration Skip: VC {vcid} not found in {guild.name}.")
+                        continue
+                    
+                    # ── Authority Verification ──
+                    # Skip permission math during load to prevent 'permissions' KeyError
+                    
+                    key = (gid, vcid)
+                    if key in self.sessions: continue # Already manifested
+
+                    # Resolve participants if VC is stable
+                    participants = {}
+                    if hasattr(vc, 'members'):
+                        participants = {m.id: datetime.now(timezone.utc) for m in vc.members if not m.bot}
                     
                     session = PomodoroSession(
-                        guild_id        = int(row['guild_id']),
-                        vc_id           = int(row['voice_channel_id']),
+                        guild_id        = gid,
+                        vc_id           = vcid,
                         text_channel_id = int(row['text_channel_id']),
                         focus_min       = 25,
                         break_min       = 5,
@@ -190,7 +211,7 @@ class PomodoroManager:
                     self.sessions[key] = session
                     session.task = asyncio.create_task(self._session_loop(session, key, guild))
                 except Exception as e:
-                    bot_logger.error(f"Failed to restore session {row['id']}: {e}")
+                    bot_logger.error(f"Failed to restore session via Record {row.get('id', '??')}: {e}")
 
     async def on_member_join_vc(self, member: discord.Member, channel: discord.VoiceChannel):
         """Surgical entry point: Only ignites sessions for explicitly configured Focus VCs."""
