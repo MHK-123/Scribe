@@ -182,36 +182,46 @@ class StatsHunter(commands.Cog):
                             break
 
             # ── Embed Construction ──
-            embed = discord.Embed(title=f"{emoji} {invoker.name} // HUNTER CARD", color=color)
+            embed = discord.Embed(
+                title=f"🛡️ {invoker.display_name} // HUNTER CARD", 
+                color=color
+            )
             if invoker.display_avatar:
                 embed.set_thumbnail(url=invoker.display_avatar.url)
             
-            # Status Section
-            status_color = "🔴" if "RAID" in status else "🟢" if "ACTIVE" in status else "⚪"
-            embed.description = f"**Status:** {status_color} `{status}`\n**Identity Verified:** <@{user_id}>"
+            # Status & Identity Block
+            status_emoji = "🔴" if "RAID" in status else "🟢" if "ACTIVE" in status else "⚪"
+            embed.description = (
+                f"{status_emoji} **STATUS:** {status}\n"
+                f"🧬 <@{user_id}> (Verified)"
+            )
             
             # XP Progression Block
             xp_block = (
-                f"**XP PROGRESS** [{bar}] `{int(progress_ratio*100)}%`\n"
-                f"`{xp_in_lvl:,} / {xp_needed:,} XP` (Total: {xp:,})"
+                f"**XP PROGRESS** `{bar}` **{int(progress_ratio*100)}%**\n"
+                f"`{xp_in_lvl:,} / {xp_needed:,} XP` (Total study XP: {xp:,})"
             )
             embed.add_field(name="🧬 PROGRESSION", value=xp_block, inline=False)
             
-            # Stats Grid
+            # Stats Grid (Clean Single Line)
             grid = (
                 f"```autohotkey\n"
-                f"RANK     | LEVEL    | RAIDS    | HOURS\n"
-                f"───────── ────────── ────────── ──────────\n"
-                f"{rank:<8} | Lvl {lvl:<4} | {session_count:<8} | {hours:<6.1f}h\n"
+                f"RANK    | LEVEL | RAIDS | HOURS\n"
+                f"{rank:<7} | {lvl:<5} | {session_count:<5} | {hours:<5.1f}h\n"
                 f"```"
             )
             embed.add_field(name="⚔️ SYSTEM STATS", value=grid, inline=False)
             
-            # Meta Footer
+            # Identity Data
             join_date = member.joined_at.strftime("%Y-%m-%d") if member and member.joined_at else "Unknown"
-            embed.add_field(name="📅 IDENTITY DATA", value=f"**Dungeon:** `{location}`\n**Joined:** `{join_date}`\n**Registry ID:** `U-{user_id[-4:]}`", inline=False)
+            embed.add_field(
+                name="📅 IDENTITY DATA", 
+                value=f"**Dungeon:** `{location}`\n**Joined:** `{join_date}` | **Registry ID:** `U-{user_id[-4:]}`", 
+                inline=False
+            )
             
-            embed.set_image(url=Settings.BACKGROUND_URL)
+            # Remove image to avoid dominating the card
+            # embed.set_image(url=Settings.BACKGROUND_URL)
             
             # ── Interaction View ──
             view = PlayerCardView(self, source)
