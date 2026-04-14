@@ -35,6 +35,7 @@ class ScribeBot(commands.Bot):
             help_command=None
         )
         self.pomodoro_manager = None
+        self._is_manifested = False
 
     async def setup_hook(self):
         bot_logger.info("📡 [PHASE]: Setup Hook Initializing...")
@@ -70,9 +71,9 @@ class ScribeBot(commands.Bot):
         for ext in initial_extensions:
             try:
                 await self.load_extension(ext)
-                bot_logger.info(f"Loaded Cog: {ext}")
+                bot_logger.info(f"✅ [PHASE]: Ritual manifested: {ext}")
             except Exception as e:
-                bot_logger.error(f"Failed Cog: {ext} -> {e}")
+                bot_logger.error(f"❌ [PHASE]: Ritual failed to manifest: {ext} -> {e}")
 
     async def ignite_socketIO(self):
         try:
@@ -82,7 +83,8 @@ class ScribeBot(commands.Bot):
             bot_logger.warning(f"⚠️ [PHASE]: SocketIO handshake delayed/failed: {e}")
 
     async def sync_tree(self):
-        await self.wait_until_ready()
+        try:
+            await self.wait_until_ready()
             # Manifest Slash Rituals
             synced = await self.tree.sync() 
             bot_logger.info(f"✅ [PHASE]: Global Slash Rituals Manifested ({len(synced)} nodes).")
@@ -120,6 +122,8 @@ class ScribeBot(commands.Bot):
                             WHERE guild_configs.owner_id IS NULL
                         ''', str(gid), str(oid))
             bot_logger.info("⚔️ [PHASE]: Realm ownership reconciliation complete.")
+            self._is_manifested = True
+            bot_logger.info("🛡️ [STABILITY]: Sentinel has reached full manifestation.")
         except Exception as e:
             bot_logger.error(f"💀 [IGNITION FAULT]: Rituals aborted but Sentinel remains stable: {e}")
 
@@ -190,6 +194,10 @@ class ScribeBot(commands.Bot):
         try:
             await ctx.send(embed=create_error_embed("SENTINEL FAULT", f"An anomaly disrupted the ritual: `{error}`"))
         except: pass
+
+    async def on_error(self, event, *args, **kwargs):
+        """Global Safety Proxy: Catches unmanaged gateway anomalies."""
+        bot_logger.error(f"🛡️ [SAFETY PROXY]: Gateway anomaly in {event}: {sys.exc_info()[1]}")
 
 # ─── Application Ignition ─────────────────────────────────────────────────────
 def main_entry():
