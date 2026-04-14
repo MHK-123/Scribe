@@ -115,6 +115,42 @@ class StatsHunter(commands.Cog):
         except Exception as e:
             bot_logger.error(f"Leaderboard Manifestation Error: {e}")
 
+    async def show_profile(self, source):
+        if not await self._check_channel_restrictions(source):
+            return
+
+        pool = get_pool()
+        if not pool:
+            return await self._send_response(source, content="System is currently experiencing database latency.")
+            
+        guild_id = str(source.guild.id)
+        user = source.user if isinstance(source, discord.Interaction) else source.author
+        user_id = str(user.id)
+        
+        try:
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    'SELECT * FROM user_levels WHERE guild_id = $1 AND user_id = $2',
+                    guild_id, user_id
+                )
+            
+            if not row:
+                return await self._send_response(source, content="No hunter stats found for this identity.")
+
+            embed = create_dungeon_embed(f"PLAYER CARD")
+            embed.set_author(name=f"{user.name} (Hunter Identity)", icon_url=user.display_avatar.url)
+            embed.set_thumbnail(url=user.display_avatar.url)
+            
+            embed.description = f"**Status:** Verified\n**Identity:** <@{user_id}>"
+            embed.add_field(name="LEVEL", value=f"`{row['level']}`", inline=True)
+            embed.add_field(name="TOTAL TIME", value=f"`{float(row['total_study_hours']):.1f}h`", inline=True)
+            embed.add_field(name="TOTAL XP", value=f"`{row['total_xp']}`", inline=True)
+            
+            embed.set_image(url=Settings.BACKGROUND_URL)
+            await self._send_response(source, embed=embed)
+        except Exception as e:
+            bot_logger.error(f"Error fetching profile: {e}")
+
 class LeaderboardView(discord.ui.View):
     def __init__(self, hunters, invoker):
         # ── Initialization Ritual ──
@@ -205,41 +241,6 @@ class LeaderboardView(discord.ui.View):
         self.current_page += 1
         await interaction.response.edit_message(embed=self.create_embed(), view=self)
 
-    async def show_profile(self, source):
-        if not await self._check_channel_restrictions(source):
-            return
-
-        pool = get_pool()
-        if not pool:
-            return await self._send_response(source, content="System is currently experiencing database latency.")
-            
-        guild_id = str(source.guild.id)
-        user = source.user if isinstance(source, discord.Interaction) else source.author
-        user_id = str(user.id)
-        
-        try:
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    'SELECT * FROM user_levels WHERE guild_id = $1 AND user_id = $2',
-                    guild_id, user_id
-                )
-            
-            if not row:
-                return await self._send_response(source, content="No hunter stats found for this identity.")
-
-            embed = create_dungeon_embed(f"PLAYER CARD")
-            embed.set_author(name=f"{user.name} (Hunter Identity)", icon_url=user.display_avatar.url)
-            embed.set_thumbnail(url=user.display_avatar.url)
-            
-            embed.description = f"**Status:** Verified\n**Identity:** <@{user_id}>"
-            embed.add_field(name="LEVEL", value=f"`{row['level']}`", inline=True)
-            embed.add_field(name="TOTAL TIME", value=f"`{float(row['total_study_hours']):.1f}h`", inline=True)
-            embed.add_field(name="TOTAL XP", value=f"`{row['total_xp']}`", inline=True)
-            
-            embed.set_image(url=Settings.BACKGROUND_URL)
-            await self._send_response(source, embed=embed)
-        except Exception as e:
-            bot_logger.error(f"Error fetching profile: {e}")
 
 async def setup(bot):
     await bot.add_cog(StatsHunter(bot))
