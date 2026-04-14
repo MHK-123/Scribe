@@ -300,25 +300,25 @@ class VoiceSetup(commands.Cog):
     # ─── Event Handlers ───
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        if member.bot:
-            return
-        pool = get_pool()
-        if not pool:
-            return
-
-        guild_id = str(member.guild.id)
-        
-        # Fire events to pomodoro manager if it exists
-        if hasattr(self.bot, 'pomodoro_manager') and self.bot.pomodoro_manager:
-            try:
-                if after.channel and (not before.channel or before.channel.id != after.channel.id):
-                    await self.bot.pomodoro_manager.on_member_join_vc(member, after.channel)
-                if before.channel and (not after.channel or before.channel.id != after.channel.id):
-                    await self.bot.pomodoro_manager.on_member_leave_vc(member, before.channel)
-            except Exception as e:
-                bot_logger.error(f'Pomodoro hook failed gracefully (Voice event continuation): {e}')
-
         try:
+            if member.bot:
+                return
+            pool = get_pool()
+            if not pool:
+                return
+
+            guild_id = str(member.guild.id)
+            
+            # Fire events to pomodoro manager if it exists
+            if hasattr(self.bot, 'pomodoro_manager') and self.bot.pomodoro_manager:
+                try:
+                    if after.channel and (not before.channel or before.channel.id != after.channel.id):
+                        await self.bot.pomodoro_manager.on_member_join_vc(member, after.channel)
+                    if before.channel and (not after.channel or before.channel.id != after.channel.id):
+                        await self.bot.pomodoro_manager.on_member_leave_vc(member, before.channel)
+                except Exception as e:
+                    bot_logger.error(f'Pomodoro hook failed gracefully (Voice event continuation): {e}')
+
             async with pool.acquire() as conn:
                 config = await conn.fetchrow('SELECT * FROM guild_configs WHERE guild_id = $1', guild_id)
                 if not config:
@@ -391,7 +391,7 @@ class VoiceSetup(commands.Cog):
                                 str(hunter.id), guild_id, str(after.channel.id), datetime.now(timezone.utc)
                             )
         except Exception as e:
-            bot_logger.error(f"Error in on_voice_state_update: {e}")
+            bot_logger.error(f"🛡️ [SAFETY BASELINE]: Voice event anomaly suppressed: {e}")
 
 async def setup(bot):
     await bot.add_cog(VoiceSetup(bot))
