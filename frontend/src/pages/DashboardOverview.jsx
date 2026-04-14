@@ -191,7 +191,7 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          {/* Activity Chart - Conditional Rendering for Safety */}
          {chartData.some(d => (d?.hours ?? 0) > 0) ? (
-            <MagicPanel className="lg:col-span-2 p-6 h-[320px] flex flex-col border-white/5" glowColor="rgba(59,130,246,0.03)">
+            <MagicPanel className="lg:col-span-2 p-6 min-h-[320px] flex flex-col border-white/5" glowColor="rgba(59,130,246,0.03)">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-bold flex items-center gap-3 text-white">
                      <Icon name="Activity" className="text-blue-500" size={16} />
@@ -202,7 +202,7 @@ export default function DashboardOverview() {
                   </div>
                </div>
                
-               <div className="flex-1 w-full h-full min-h-0">
+               <div className="flex-1 w-full h-full min-h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                         <defs>
@@ -212,7 +212,15 @@ export default function DashboardOverview() {
                            </linearGradient>
                         </defs>
                         <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
-                        <YAxis stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                        <YAxis 
+                           stroke="#475569" 
+                           fontSize={11} 
+                           fontWeight="bold" 
+                           tickLine={false} 
+                           axisLine={false}
+                           domain={[0, (dataMax) => Math.max(dataMax, 1)]}
+                           tickFormatter={(val) => val === 0 ? '0' : val.toFixed(1)}
+                        />
                         <Tooltip contentStyle={{ backgroundColor: '#0a0a0f', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', color: '#fff' }} />
                         <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
                         </AreaChart>
