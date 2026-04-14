@@ -220,7 +220,7 @@ export default function DashboardOverview() {
                   </div>
                </div>
                
-               <div className="flex-1 w-full h-full min-h-[260px]">
+               <div className="flex-1 w-full h-full min-h-[260px] overflow-hidden">
                   <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={sanitizedChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                         <defs>
@@ -238,7 +238,7 @@ export default function DashboardOverview() {
                            axisLine={false}
                            domain={[0, (dataMax) => {
                                const safeMax = isFinite(dataMax) && !isNaN(dataMax) ? dataMax : 0;
-                               return Math.max(safeMax, 1);
+                               return Math.min(Math.max(safeMax, 1), 100);
                            }]}
                            tickFormatter={(val) => {
                                const safeVal = Number(val);
@@ -246,7 +246,7 @@ export default function DashboardOverview() {
                            }}
                         />
                         <Tooltip contentStyle={{ backgroundColor: '#0a0a0f', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', color: '#fff' }} />
-                        <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" isAnimationActive={false} />
+                        <Area type="linear" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" isAnimationActive={false} />
                         </AreaChart>
                   </ResponsiveContainer>
                </div>
