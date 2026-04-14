@@ -220,35 +220,37 @@ export default function DashboardOverview() {
                   </div>
                </div>
                
-               <div className="flex-1 w-full h-full min-h-[260px] overflow-hidden">
-                  <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={sanitizedChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+               <div className="flex-1 w-full h-full min-h-[260px] flex items-center justify-center overflow-hidden">
+                        <AreaChart width={600} height={220} data={sanitizedChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                            <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                            </linearGradient>
                         </defs>
-                        <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
+                        <XAxis 
+                           dataKey="name" 
+                           stroke="#475569" 
+                           fontSize={10} 
+                           fontWeight="bold" 
+                           tickLine={false} 
+                           axisLine={false} 
+                           tick={{ dy: 10 }} 
+                           interval="preserveStartEnd"
+                        />
                         <YAxis 
                            stroke="#475569" 
-                           fontSize={11} 
+                           fontSize={10} 
                            fontWeight="bold" 
                            tickLine={false} 
                            axisLine={false}
-                           domain={[0, (dataMax) => {
-                               const safeMax = isFinite(dataMax) && !isNaN(dataMax) ? dataMax : 0;
-                               return Math.min(Math.max(safeMax, 1), 100);
-                           }]}
-                           tickFormatter={(val) => {
-                               const safeVal = Number(val);
-                               return isFinite(safeVal) ? safeVal.toFixed(1) : '0.0';
-                           }}
+                           domain={[0, 10]}
+                           allowDecimals={false}
+                           tickFormatter={(val) => `${val}h`}
                         />
                         <Tooltip contentStyle={{ backgroundColor: '#0a0a0f', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', color: '#fff' }} />
                         <Area type="linear" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" isAnimationActive={false} />
                         </AreaChart>
-                  </ResponsiveContainer>
                </div>
             </MagicPanel>
          ) : null}
