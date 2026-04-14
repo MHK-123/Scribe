@@ -322,11 +322,13 @@ class VoiceSetup(commands.Cog):
             if hasattr(self.bot, 'pomodoro_manager') and self.bot.pomodoro_manager:
                 try:
                     if after.channel and (not before.channel or before.channel.id != after.channel.id):
+                        bot_logger.info(f"📡 [VOICE-BRIDGE]: Triggering Pomodoro Join event for {member.name}")
                         await self.bot.pomodoro_manager.on_member_join_vc(member, after.channel)
                     if before.channel and (not after.channel or before.channel.id != after.channel.id):
+                        bot_logger.info(f"📡 [VOICE-BRIDGE]: Triggering Pomodoro Leave event for {member.name}")
                         await self.bot.pomodoro_manager.on_member_leave_vc(member, before.channel)
                 except Exception as e:
-                    bot_logger.error(f'Pomodoro hook failed gracefully (Voice event continuation): {e}')
+                    bot_logger.error(f"🛡️ [BRIDGE-FAULT]: Pomodoro hook failed: {e}")
 
             async with pool.acquire() as conn:
                 config = await conn.fetchrow('SELECT * FROM guild_configs WHERE guild_id = $1', guild_id)

@@ -215,10 +215,12 @@ class PomodoroManager:
 
     async def on_member_join_vc(self, member: discord.Member, channel: discord.VoiceChannel):
         """Surgical entry point: Only ignites sessions for explicitly configured Focus VCs."""
+        bot_logger.info(f"📡 [POMO-TRACE]: Member {member.name} joined VC {channel.name} ({channel.id})")
         key = (member.guild.id, channel.id)
         
         # 1. Existing Session Check: Silent Addition
         if key in self.sessions:
+            bot_logger.info(f"📡 [POMO-TRACE]: Session already manifests in {channel.name}. Adding hunter.")
             session = self.sessions[key]
             if member.id not in session.participants:
                 session.participants[member.id] = datetime.now(timezone.utc)
@@ -227,18 +229,25 @@ class PomodoroManager:
             return
 
         # 2. Config Verification: Exact match only
+        bot_logger.info(f"📡 [POMO-TRACE]: Searching for config: Guild={member.guild.id}, VC={channel.id}")
         async with self.pool.acquire() as conn:
             try:
+                # We try both string and int casting for maximum compatibility
                 cfg = await conn.fetchrow('SELECT * FROM pomodoro_configs WHERE guild_id = $1 AND voice_channel_id = $2', str(member.guild.id), str(channel.id))
-                if not cfg: return
                 
+                if not cfg:
+                    bot_logger.warning(f"📡 [POMO-TRACE]: No Pomodoro configuration found for VC {channel.id} in realm {member.guild.name}.")
+                    return
+                
+                bot_logger.info(f"📡 [POMO-TRACE]: Config manifested! Auto-start: {cfg.get('auto_start')}")
                 # Safe reconciliation: asyncpg.Record -> dict
                 cfg = dict(cfg)
                 
                 if not cfg.get('auto_start', True):
+                    bot_logger.info(f"📡 [POMO-TRACE]: Auto-start is disabled for this node. Aborting.")
                     return
             except Exception as e:
-                bot_logger.error(f"Config fetch failed: {e}")
+                bot_logger.error(f"📡 [POMO-TRACE]: Config ritual failed: {e}")
                 return
 
         await self.start_session(member.guild, channel, cfg)
@@ -274,7 +283,7 @@ class PomodoroManager:
                 text_channel = next((c for c in guild.text_channels if c.permissions_for(me).send_messages), None)
 
         if not text_channel:
-            bot_logger.error(f"❌ [POMODORO]: No valid manifestation point in {guild.name}. Ignition aborted.")
+            bot_logger.error(f"❌ [POMODORO]: No valid manifestation point (Text Channel) in {guild.name}. Ignition aborted.")
             return
 
         session = PomodoroSession(
