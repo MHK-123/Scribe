@@ -118,19 +118,16 @@ class StatsHunter(commands.Cog):
 class LeaderboardView(discord.ui.View):
     def __init__(self, hunters, invoker):
         # ── Initialization Ritual ──
-        # No logic or permission checks here to prevent startup flatlines.
         super().__init__(timeout=60)
         self.hunters = hunters
         self.invoker = invoker
         self.current_page = 0
-        self.per_page = 5
+        self.per_page = 10
         self.total_pages = math.ceil(len(hunters) / self.per_page)
 
     def create_embed(self):
-        # Embed generation logic (Execution Phase)
         embed = discord.Embed(
             title="⚔️ RANKING: TOP HUNTERS",
-            description="",
             color=0x4b8bf5
         )
         
@@ -138,34 +135,46 @@ class LeaderboardView(discord.ui.View):
         end = start + self.per_page
         page_hunters = self.hunters[start:end]
         
-        entries = []
+        # ── Table Construction ──
+        # Header: Rank   Hunter           Level | Time
+        table_header = "Rank   Hunter           Level | Time\n"
+        table_divider = "────── ──────────────── ─────── ──────\n"
+        
+        rows = []
         for i, hunter in enumerate(page_hunters, start + 1):
-            rank = i
-            # Record access safety
             try:
-                user_id = hunter['user_id']
+                user_id = int(hunter['user_id'])
                 lvl = hunter['level']
                 hours = float(hunter['total_study_hours'])
-            except (KeyError, TypeError) as e:
-                bot_logger.error(f"Leaderboard data corruption: {e}")
+            except (KeyError, TypeError, ValueError):
                 continue
                 
-            # 🏆 Rank Tier Ritual
-            if rank == 1:
-                tier = "🏆 #1 — S-RANK HUNTER"
-            elif rank == 2:
-                tier = "🥈 #2 — A-RANK HUNTER"
-            elif rank == 3:
-                tier = "🥉 #3 — B-RANK HUNTER"
-            else:
-                tier = f"#{rank} — C-RANK HUNTER"
+            # Icon Selection
+            if i == 1: icon = "🏆"
+            elif i == 2: icon = "🥈"
+            elif i == 3: icon = "🥉"
+            else: icon = "  "
             
-            entry = f"**{tier}**\n<@{user_id}>\n`Lvl {lvl} • {hours:.1f}h`"
-            entries.append(entry)
+            rank_col = f"{icon} #{i:<2}"
+            
+            # Name Resolution
+            user = self.invoker.guild.get_member(user_id) if self.invoker.guild else None
+            name = f"@{user.display_name}" if user else f"Hunter_{str(user_id)[-4:]}"
+            name_col = f"{name[:16]:<16}"
+            
+            lvl_col = f"Lvl {lvl:<2}"
+            time_col = f"{hours:>5.1f}h"
+            
+            rows.append(f"{rank_col} {name_col} {lvl_col:<7} | {time_col}")
 
-        embed.description = "\n\n".join(entries) if entries else "No hunters Manifested in this page."
+        if not rows:
+            embed.description = "*No hunters Manifested in this page.*"
+        else:
+            table_content = "\n".join(rows)
+            # Use autohotkey formatting for soft blue highlighting on the structure
+            embed.description = f"```autohotkey\n{table_header}{table_divider}{table_content}\n```"
+
         embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Total Hunters: {len(self.hunters)}")
-        
         self.update_buttons()
         return embed
 
