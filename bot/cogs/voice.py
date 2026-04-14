@@ -20,7 +20,7 @@ class VoiceSetup(commands.Cog):
         async with pool.acquire() as conn:
             return await conn.fetchval('SELECT owner_id FROM temp_voice_channels WHERE channel_id = $1', str(channel_id))
 
-    async def check_authority(self, interaction: discord.Interaction, require_owner: bool = False):
+    async def check_authority(self, interaction: discord.Interaction, require_owner: bool = False, allow_global: bool = False):
         """Standard authority ritual for VC commands."""
         if not interaction.user.voice or not interaction.user.voice.channel:
             await interaction.response.send_message("❌ You must be in a voice channel to use this ritual!", ephemeral=True)
@@ -29,22 +29,20 @@ class VoiceSetup(commands.Cog):
         channel = interaction.user.voice.channel
         owner_id = await self.get_owner(channel.id)
         
-        # If no owner record, it's not a temp VC
-        if not owner_id:
+        # If no owner record and not allowed globally, it's blocked
+        if not owner_id and not allow_global:
             await interaction.response.send_message("❌ This ritual can only be performed in temporary voice dungeons.", ephemeral=True)
             return None
 
-        is_owner = owner_id == str(interaction.user.id)
-        is_admin = interaction.user.guild_permissions.administrator
+        # Check for owner/admin if required
+        if owner_id:
+            is_owner = owner_id == str(interaction.user.id)
+            is_admin = interaction.user.guild_permissions.administrator
 
-        if require_owner:
-            if not is_owner and not is_admin:
+            if require_owner and not is_owner and not is_admin:
                 await interaction.response.send_message("❌ Only the dungeon host or a high admin can evoke this power!", ephemeral=True)
                 return None
-        else:
-            # For general management, just being in the VC is enough (as requested)
-            pass 
-
+        
         return channel
 
     # ─── Commands ───
@@ -186,10 +184,10 @@ class VoiceSetup(commands.Cog):
         except discord.HTTPException:
             await interaction.response.send_message("❌ Failed to change capacity.", ephemeral=True)
 
-    @app_commands.command(name="vc-invite", description="Summon a hunter to your dungeon (even if locked)")
+    @app_commands.command(name="vc-invite", description="Summon a hunter to your dungeon (supports global VCs)")
     @app_commands.describe(member="Hunter to summon")
     async def vc_invite(self, interaction: discord.Interaction, member: discord.Member):
-        channel = await self.check_authority(interaction, require_owner=False)
+        channel = await self.check_authority(interaction, require_owner=False, allow_global=True)
         if not channel: return
 
         try:
