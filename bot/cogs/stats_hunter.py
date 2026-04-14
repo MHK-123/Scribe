@@ -240,8 +240,6 @@ class LeaderboardView(discord.ui.View):
             await self._send_response(source, embed=embed)
         except Exception as e:
             bot_logger.error(f"Error fetching profile: {e}")
-        except Exception as e:
-            bot_logger.error(f"Error fetching profile: {e}")
 
 async def setup(bot):
     await bot.add_cog(StatsHunter(bot))
