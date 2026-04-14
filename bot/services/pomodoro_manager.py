@@ -142,8 +142,14 @@ class PomodoroView(discord.ui.View):
 
     @discord.ui.button(label='Stop', style=discord.ButtonStyle.danger, custom_id='pomo_stop')
     async def stop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.guild_permissions.manage_channels:
-            return await interaction.response.send_message("Authority required.", ephemeral=True)
+        # ── Authority Guard ──
+        if not interaction.guild or not interaction.user:
+            return await interaction.response.send_message("Interaction context failed.", ephemeral=True)
+            
+        perms = getattr(interaction.user, 'guild_permissions', None)
+        if not perms or not perms.manage_channels:
+            return await interaction.response.send_message("Authority required (Manage Channels).", ephemeral=True)
+            
         session = self._get_session()
         if session: await self.manager.stop_session(session, reason="Manual Termination")
         await interaction.response.defer()
@@ -201,12 +207,17 @@ class PomodoroManager:
 
         # 2. Config Verification: Exact match only
         async with self.pool.acquire() as conn:
-            cfg = await conn.fetchrow(
-                'SELECT * FROM pomodoro_configs WHERE guild_id = $1 AND voice_channel_id = $2',
-                str(member.guild.id), str(channel.id)
-            )
-            
-            if not cfg or not cfg.get('auto_start', True):
+            try:
+                cfg = await conn.fetchrow('SELECT * FROM pomodoro_configs WHERE guild_id = $1 AND voice_channel_id = $2', str(member.guild.id), str(channel.id))
+                if not cfg: return
+                
+                # Safe reconciliation: asyncpg.Record -> dict
+                cfg = dict(cfg)
+                
+                if not cfg.get('auto_start', True):
+                    return
+            except Exception as e:
+                bot_logger.error(f"Config fetch failed: {e}")
                 return
 
         await self.start_session(member.guild, channel, cfg)
@@ -231,14 +242,15 @@ class PomodoroManager:
 
         # RESOLVE TEXT CHANNEL
         text_channel = None
+        # 2. Resolve Communications
         target_id = cfg.get('text_channel_id')
-        if target_id:
-            text_channel = guild.get_channel(int(target_id))
+        text_channel = guild.get_channel(int(target_id)) if target_id else None
         
         if not text_channel:
-            text_channel = guild.system_channel
-            if not text_channel:
-                text_channel = next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+            # Search for a safe manifest point
+            me = guild.me
+            if me:
+                text_channel = next((c for c in guild.text_channels if c.permissions_for(me).send_messages), None)
 
         if not text_channel:
             bot_logger.error(f"❌ [POMODORO]: No valid manifestation point in {guild.name}. Ignition aborted.")

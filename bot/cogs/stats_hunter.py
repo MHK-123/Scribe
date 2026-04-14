@@ -117,6 +117,8 @@ class StatsHunter(commands.Cog):
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, hunters, invoker):
+        # ── Initialization Ritual ──
+        # No logic or permission checks here to prevent startup flatlines.
         super().__init__(timeout=60)
         self.hunters = hunters
         self.invoker = invoker
@@ -125,6 +127,7 @@ class LeaderboardView(discord.ui.View):
         self.total_pages = math.ceil(len(hunters) / self.per_page)
 
     def create_embed(self):
+        # Embed generation logic (Execution Phase)
         embed = discord.Embed(
             title="⚔️ RANKING: TOP HUNTERS",
             description="",
@@ -138,10 +141,15 @@ class LeaderboardView(discord.ui.View):
         entries = []
         for i, hunter in enumerate(page_hunters, start + 1):
             rank = i
-            user_id = hunter['user_id']
-            lvl = hunter['level']
-            hours = float(hunter['total_study_hours'])
-            
+            # Record access safety
+            try:
+                user_id = hunter['user_id']
+                lvl = hunter['level']
+                hours = float(hunter['total_study_hours'])
+            except (KeyError, TypeError) as e:
+                bot_logger.error(f"Leaderboard data corruption: {e}")
+                continue
+                
             # 🏆 Rank Tier Ritual
             if rank == 1:
                 tier = "🏆 #1 — S-RANK HUNTER"
@@ -155,10 +163,9 @@ class LeaderboardView(discord.ui.View):
             entry = f"**{tier}**\n<@{user_id}>\n`Lvl {lvl} • {hours:.1f}h`"
             entries.append(entry)
 
-        embed.description = "\n\n".join(entries)
+        embed.description = "\n\n".join(entries) if entries else "No hunters Manifested in this page."
         embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Total Hunters: {len(self.hunters)}")
         
-        # UI Control Ritual
         self.update_buttons()
         return embed
 
@@ -167,8 +174,15 @@ class LeaderboardView(discord.ui.View):
         self.next_button.disabled = self.current_page >= self.total_pages - 1
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # Safety Guard: Ensure context is resolved
+        if not interaction.user:
+            return False
+            
         if interaction.user.id != self.invoker.id:
-            await interaction.response.send_message("❌ This ritual can only be controlled by the invoker.", ephemeral=True)
+            try:
+                await interaction.response.send_message("❌ This ritual can only be controlled by the invoker.", ephemeral=True)
+            except:
+                pass
             return False
         return True
 

@@ -118,29 +118,40 @@ class ScribeBot(commands.Bot):
         bot_logger.info(f"✅ [MANIFEST]: Sentinel '{self.user}' is online.")
 
         # ─── Owner Sync Ritual (Backfill) ───
-        async with self.pool.acquire() as conn:
-            for guild in self.guilds:
-                await conn.execute('''
-                    INSERT INTO guild_configs (guild_id, owner_id) 
-                    VALUES ($1, $2) 
-                    ON CONFLICT (guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
-                    WHERE guild_configs.owner_id IS NULL
-                ''', str(guild.id), str(guild.owner_id))
+        try:
+            async with self.pool.acquire() as conn:
+                for guild in self.guilds:
+                    gid = getattr(guild, 'id', None)
+                    oid = getattr(guild, 'owner_id', None)
+                    if gid and oid:
+                        await conn.execute('''
+                            INSERT INTO guild_configs (guild_id, owner_id) 
+                            VALUES ($1, $2) 
+                            ON CONFLICT (guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
+                            WHERE guild_configs.owner_id IS NULL
+                        ''', str(gid), str(oid))
+        except Exception as e:
+            bot_logger.warning(f"⚠️ [IGNITION]: Guild reconciliation bypassed: {e}")
         bot_logger.info("⚔️ [PHASE]: Realm ownership reconciliation complete.")
 
     async def on_guild_join(self, guild: discord.Guild):
-        """Universal Initialization Ritual: Manifests the guild config when summoned."""
-        bot_logger.info(f"🔮 [SUMMON]: Sentinel has entered realm '{guild.name}' ({guild.id})")
-        
+        bot_logger.info(f"🛡️ [PROTOCOL]: Sentinel entering new realm: {guild.name} ({guild.id})")
+        try:
+            async with self.pool.acquire() as conn:
+                gid = getattr(guild, 'id', None)
+                oid = getattr(guild, 'owner_id', None)
+                if gid and oid:
+                    await conn.execute('''
+                        INSERT INTO guild_configs (guild_id, owner_id) 
+                        VALUES ($1, $2) 
+                        ON CONFLICT (guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
+                        WHERE guild_configs.owner_id IS NULL
+                    ''', str(gid), str(oid))
+        except Exception as e:
+            bot_logger.error(f"Failed to reconcile new realm: {e}")
+            
         # 1. Initialize Database Core Configs
         async with self.pool.acquire() as conn:
-            # Main Guild Config
-            await conn.execute('''
-                INSERT INTO guild_configs (guild_id, owner_id) 
-                VALUES ($1, $2) 
-                ON CONFLICT (guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id
-            ''', str(guild.id), str(guild.owner_id))
-            
             # Default Pomodoro Config
             await conn.execute('''
                 INSERT INTO pomodoro_configs (guild_id, focus_duration, break_duration, auto_start, auto_stop)

@@ -21,7 +21,7 @@ class ResilientTimeout(_original_timeout):
 
 # Apply the shield globally
 aiohttp.ClientTimeout = ResilientTimeout
-aiohttp.ClientNSTiveTimeout = ResilientTimeout
+aiohttp.ClientNSTimeout = ResilientTimeout
 aiohttp.ClientWSTimeout = ResilientTimeout
 
 # Force unbuffered output
