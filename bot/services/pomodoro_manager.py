@@ -380,7 +380,15 @@ class PomodoroManager:
                     await conn.execute('UPDATE pomodoro_sessions SET message_id = $1 WHERE guild_id = $2 AND voice_channel_id = $3', 
                                      str(msg.id), str(session.guild_id), str(session.vc_id))
             else:
-                msg = await text_ch.fetch_message(session.message_id)
-                await msg.edit(content=announcement, embed=embed, view=view)
+                try:
+                    msg = await text_ch.fetch_message(session.message_id)
+                    await msg.edit(content=announcement, embed=embed, view=view)
+                except discord.NotFound:
+                    # Message was deleted; manifest a new one
+                    msg = await text_ch.send(content=announcement, embed=embed, view=view)
+                    session.message_id = msg.id
+                    async with self.pool.acquire() as conn:
+                        await conn.execute('UPDATE pomodoro_sessions SET message_id = $1 WHERE guild_id = $2 AND voice_channel_id = $3', 
+                                         str(msg.id), str(session.guild_id), str(session.vc_id))
         except Exception as e:
             bot_logger.error(f"⚠️ [REFRESH]: Ritual failed: {e}")
