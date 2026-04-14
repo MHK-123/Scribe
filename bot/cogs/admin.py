@@ -38,7 +38,7 @@ class Admin(commands.Cog):
         """[Owner Only] Purge the global command registry to fix duplicates."""
         try:
             bot_logger.info(f"Owner {ctx.author} is purging the global command tree.")
-            self.bot.tree.clear(guild=None)
+            self.bot.tree.clear_commands(guild=None)
             await self.bot.tree.sync()
             embed = create_success_embed(
                 "GLOBAL PURGE COMPLETE",
@@ -82,7 +82,7 @@ class Admin(commands.Cog):
             bot_logger.info(f"🛡️ [ADMIN]: {ctx.author} purging local nodes in guild {ctx.guild.id}.")
             
             # THE CURE: Clear guild-specific overrides so only Global ones remain
-            self.bot.tree.clear(guild=ctx.guild)
+            self.bot.tree.clear_commands(guild=ctx.guild)
             await self.bot.tree.sync(guild=ctx.guild)
             
             embed = create_success_embed(
