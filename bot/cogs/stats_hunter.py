@@ -115,7 +115,8 @@ class StatsHunter(commands.Cog):
         except Exception as e:
             bot_logger.error(f"Leaderboard Manifestation Error: {e}")
 
-    async def show_profile(self, source):
+    async def show_profile(self, source, ephemeral=False):
+        """Generates the premium Solo Leveling inspired Hunter Registry card."""
         if not await self._check_channel_restrictions(source):
             return
 
@@ -124,32 +125,144 @@ class StatsHunter(commands.Cog):
             return await self._send_response(source, content="System is currently experiencing database latency.")
             
         guild_id = str(source.guild.id)
-        user = source.user if isinstance(source, discord.Interaction) else source.author
-        user_id = str(user.id)
+        # Handle interaction vs message
+        invoker = source.user if isinstance(source, discord.Interaction) else source.author
+        user_id = str(invoker.id)
         
         try:
             async with pool.acquire() as conn:
+                # 1. Fetch Core Stats
                 row = await conn.fetchrow(
-                    'SELECT * FROM user_levels WHERE guild_id = $1 AND user_id = $2',
+                    'SELECT total_xp, level, total_study_hours FROM user_levels WHERE guild_id = $1 AND user_id = $2',
+                    guild_id, user_id
+                )
+                
+                # 2. Fetch Session History (Total Raids)
+                session_count = await conn.fetchval(
+                    'SELECT COUNT(*) FROM study_sessions WHERE guild_id = $1 AND user_id = $2',
                     guild_id, user_id
                 )
             
             if not row:
-                return await self._send_response(source, content="No hunter stats found for this identity.")
+                return await self._send_response(source, content="No hunter stats found. Manifest in a VC to ignite your registry.")
 
-            embed = create_dungeon_embed(f"PLAYER CARD")
-            embed.set_author(name=f"{user.name} (Hunter Identity)", icon_url=user.display_avatar.url)
-            embed.set_thumbnail(url=user.display_avatar.url)
+            # ── Data Calculations ──
+            lvl   = row['level']
+            hours = float(row['total_study_hours'])
+            xp    = row['total_xp']
             
-            embed.description = f"**Status:** Verified\n**Identity:** <@{user_id}>"
-            embed.add_field(name="LEVEL", value=f"`{row['level']}`", inline=True)
-            embed.add_field(name="TOTAL TIME", value=f"`{float(row['total_study_hours']):.1f}h`", inline=True)
-            embed.add_field(name="TOTAL XP", value=f"`{row['total_xp']}`", inline=True)
+            # XP Progression Logic
+            base_xp = (lvl ** 2) * 100
+            next_xp = ((lvl + 1) ** 2) * 100
+            xp_in_lvl = xp - base_xp
+            xp_needed = next_xp - base_xp
+            progress_ratio = max(0, min(xp_in_lvl / xp_needed, 1.0)) if xp_needed > 0 else 1.0
+            
+            # Progress Bar (10 segments)
+            filled = int(progress_ratio * 10)
+            bar = "▰" * filled + "▱" * (10 - filled)
+            
+            # Rank System
+            rank, emoji, color = self._get_rank_info(lvl)
+            
+            # Dynamic Status Determination
+            status = "IDLE"
+            location = "None"
+            member = source.guild.get_member(invoker.id)
+            
+            if member and member.voice:
+                location = member.voice.channel.name
+                status = "ACTIVE HUNTER"
+                # Check for active Pomodoro (Raid)
+                pomo_manager = self.bot.get_cog('PomodoroManager')
+                if pomo_manager:
+                    for session in pomo_manager.sessions.values():
+                        if invoker.id in session.participants:
+                            status = "RAID IN PROGRESS"
+                            break
+
+            # ── Embed Construction ──
+            embed = discord.Embed(title=f"{emoji} {invoker.name} // HUNTER CARD", color=color)
+            if invoker.display_avatar:
+                embed.set_thumbnail(url=invoker.display_avatar.url)
+            
+            # Status Section
+            status_color = "🔴" if "RAID" in status else "🟢" if "ACTIVE" in status else "⚪"
+            embed.description = f"**Status:** {status_color} `{status}`\n**Identity Verified:** <@{user_id}>"
+            
+            # XP Progression Block
+            xp_block = (
+                f"**XP PROGRESS** [{bar}] `{int(progress_ratio*100)}%`\n"
+                f"`{xp_in_lvl:,} / {xp_needed:,} XP` (Total: {xp:,})"
+            )
+            embed.add_field(name="🧬 PROGRESSION", value=xp_block, inline=False)
+            
+            # Stats Grid
+            grid = (
+                f"```autohotkey\n"
+                f"RANK     | LEVEL    | RAIDS    | HOURS\n"
+                f"───────── ────────── ────────── ──────────\n"
+                f"{rank:<8} | Lvl {lvl:<4} | {session_count:<8} | {hours:<6.1f}h\n"
+                f"```"
+            )
+            embed.add_field(name="⚔️ SYSTEM STATS", value=grid, inline=False)
+            
+            # Meta Footer
+            join_date = member.joined_at.strftime("%Y-%m-%d") if member and member.joined_at else "Unknown"
+            embed.add_field(name="📅 IDENTITY DATA", value=f"**Dungeon:** `{location}`\n**Joined:** `{join_date}`\n**Registry ID:** `U-{user_id[-4:]}`", inline=False)
             
             embed.set_image(url=Settings.BACKGROUND_URL)
-            await self._send_response(source, embed=embed)
+            
+            # ── Interaction View ──
+            view = PlayerCardView(self, source)
+            
+            if isinstance(source, discord.Interaction):
+                if source.response.is_done():
+                    await source.followup.send(embed=embed, view=view, ephemeral=ephemeral)
+                else:
+                    await source.response.send_message(embed=embed, view=view, ephemeral=ephemeral)
+            else:
+                await source.channel.send(embed=embed, view=view)
+
         except Exception as e:
-            bot_logger.error(f"Error fetching profile: {e}")
+            bot_logger.error(f"Error manifesting player card: {e}")
+
+    def _get_rank_info(self, level):
+        """Returns (Rank_Name, Emoji, Color)."""
+        if level >= 80: return ("S-RANK", "👑", 0xffd700) # Gold
+        if level >= 60: return ("A-RANK", "💎", 0x00ffff) # Cyan
+        if level >= 40: return ("B-RANK", "🔥", 0xff4500) # OrangeRed
+        if level >= 20: return ("C-RANK", "⚔️", 0x9370db) # Purple
+        if level >= 10: return ("D-RANK", "🏹", 0x32cd32) # Green
+        return ("E-RANK", "🛡️", 0x808080) # Grey
+
+class PlayerCardView(discord.ui.View):
+    def __init__(self, cog, source):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.source = source
+        self.user = source.user if isinstance(source, discord.Interaction) else source.author
+
+    @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.secondary)
+    async def refresh_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("This is not your registry.", ephemeral=True)
+        # Update the profile view
+        await self.cog.show_profile(interaction, ephemeral=True)
+
+    @discord.ui.button(label="⚔️ Rankings", style=discord.ButtonStyle.secondary)
+    async def rankings_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cog.show_leaderboard(interaction)
+
+    @discord.ui.button(label="🏹 Start Raid", style=discord.ButtonStyle.success)
+    async def start_raid_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        msg = (
+            "🛡️ **How to start a Raid:**\n"
+            "1. Enter a configured **Focus VC**.\n"
+            "2. The Scribe System will auto-ignite a Pomodoro session.\n"
+            "3. Or use `/pomodoro start` to manually ignite the ritual."
+        )
+        await interaction.response.send_message(msg, ephemeral=True)
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, hunters, invoker):
