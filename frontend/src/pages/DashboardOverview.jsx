@@ -105,6 +105,24 @@ export default function DashboardOverview() {
     { title: 'Mana Harvested', value: `${Number(stats?.totalHoursToday ?? 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
   ];
 
+  // --- Graph Stabilization Ritual ---
+  const SAFE_LIMIT = 100;
+  const sanitizedChartData = (chartData || []).map(point => {
+    const rawVal = Number(point?.hours);
+    const safeVal = isFinite(rawVal) && !isNaN(rawVal) 
+      ? Math.max(0, Math.min(rawVal, SAFE_LIMIT)) 
+      : 0;
+    
+    return {
+      ...point,
+      name: point?.name || '?',
+      hours: safeVal
+    };
+  });
+
+  const hasValidData = sanitizedChartData.length > 0 && 
+    sanitizedChartData.some(d => (d?.hours ?? 0) > 0.01);
+
   return (
     <div className={`space-y-8 relative overflow-visible p-4 transition-opacity duration-500 ${!stats ? 'opacity-50' : 'opacity-100'}`}>
       <header className="flex flex-col gap-1">
@@ -189,9 +207,9 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Activity Chart - Conditional Rendering for Safety */}
-         {chartData.some(d => (d?.hours ?? 0) > 0) ? (
-            <MagicPanel className="lg:col-span-2 p-6 min-h-[320px] flex flex-col border-white/5" glowColor="rgba(59,130,246,0.03)">
+         {/* Activity Chart - Conditional Rendering with Sentinel Guard */}
+         {hasValidData ? (
+            <MagicPanel className="lg:col-span-2 p-6 min-h-[320px] flex flex-col border-white/5 overflow-hidden" glowColor="rgba(59,130,246,0.03)">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-bold flex items-center gap-3 text-white">
                      <Icon name="Activity" className="text-blue-500" size={16} />
@@ -204,7 +222,7 @@ export default function DashboardOverview() {
                
                <div className="flex-1 w-full h-full min-h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <AreaChart data={sanitizedChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                         <defs>
                            <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -218,11 +236,17 @@ export default function DashboardOverview() {
                            fontWeight="bold" 
                            tickLine={false} 
                            axisLine={false}
-                           domain={[0, (dataMax) => Math.max(dataMax, 1)]}
-                           tickFormatter={(val) => val === 0 ? '0' : val.toFixed(1)}
+                           domain={[0, (dataMax) => {
+                               const safeMax = isFinite(dataMax) && !isNaN(dataMax) ? dataMax : 0;
+                               return Math.max(safeMax, 1);
+                           }]}
+                           tickFormatter={(val) => {
+                               const safeVal = Number(val);
+                               return isFinite(safeVal) ? safeVal.toFixed(1) : '0.0';
+                           }}
                         />
                         <Tooltip contentStyle={{ backgroundColor: '#0a0a0f', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', color: '#fff' }} />
-                        <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                        <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" isAnimationActive={false} />
                         </AreaChart>
                   </ResponsiveContainer>
                </div>
@@ -230,7 +254,7 @@ export default function DashboardOverview() {
          ) : null}
 
          {/* Oracle Panel */}
-         <MagicPanel className={`${!chartData.some(d => (d?.hours ?? 0) > 0) ? 'lg:col-span-3' : ''} p-6 border-blue-500/10 flex flex-col justify-between`} glowColor="rgba(59,130,246,0.08)">
+         <MagicPanel className={`${!hasValidData ? 'lg:col-span-3' : ''} p-6 border-blue-500/10 flex flex-col justify-between`} glowColor="rgba(59,130,246,0.08)">
             <div className="relative">
                <div className="flex items-center gap-3 mb-6">
                   <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-[0_0_15_rgb(59,130,246,0.1)]">
