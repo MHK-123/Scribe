@@ -5,6 +5,7 @@ from bot.core.database import get_pool
 from bot.utils.embeds import create_dungeon_embed
 from bot.utils.logger import bot_logger
 from bot.config import Settings
+import math
 
 class StatsHunter(commands.Cog):
     def __init__(self, bot):
@@ -83,35 +84,103 @@ class StatsHunter(commands.Cog):
         guild_id = str(source.guild.id)
         try:
             async with pool.acquire() as conn:
-                top_hunters = await conn.fetch(
+                # 1. Manifest Data Ritual (Filtering Ghost Hunters)
+                hunters = await conn.fetch(
                     '''
-                    SELECT user_id, total_study_hours, level
+                    SELECT user_id, total_study_hours, level, total_xp
                     FROM user_levels
-                    WHERE guild_id = $1
+                    WHERE guild_id = $1 
+                      AND level > 0 
+                      AND total_xp > 0 
+                      AND total_study_hours > 0
                     ORDER BY total_study_hours DESC
-                    LIMIT 10
                     ''',
                     guild_id
                 )
 
-            embed = create_dungeon_embed("RANKING: TOP HUNTERS", "Top hunters by focus time.")
-            
-            if not top_hunters:
-                embed.description = "```\nNo hunters found in this realm yet.\n```"
-            else:
-                ranks, users, stats = [], [], []
-                for i, row in enumerate(top_hunters, 1):
-                    ranks.append(f"`#{i}`")
-                    users.append(f"<@{row['user_id']}>")
-                    stats.append(f"`Lvl {row['level']} | {float(row['total_study_hours']):.1f}h`")
-                
-                embed.add_field(name="Rank", value="\n".join(ranks), inline=True)
-                embed.add_field(name="Hunter", value="\n".join(users), inline=True)
-                embed.add_field(name="Level | Time", value="\n".join(stats), inline=True)
+            if not hunters:
+                embed = create_dungeon_embed("⚔️ RANKING: TOP HUNTERS", "No qualified hunters have manifested in this realm yet.")
+                return await self._send_response(source, embed=embed)
 
-            await self._send_response(source, embed=embed)
+            # 2. Ignite Pagination View
+            invoker = source.user if isinstance(source, discord.Interaction) else source.author
+            view = LeaderboardView(hunters, invoker)
+            embed = view.create_embed()
+            
+            if isinstance(source, discord.Interaction):
+                await source.response.send_message(embed=embed, view=view)
+            else:
+                await source.channel.send(embed=embed, view=view)
+
         except Exception as e:
-            bot_logger.error(f"Error fetching leaderboard: {e}")
+            bot_logger.error(f"Leaderboard Manifestation Error: {e}")
+
+class LeaderboardView(discord.ui.View):
+    def __init__(self, hunters, invoker):
+        super().__init__(timeout=60)
+        self.hunters = hunters
+        self.invoker = invoker
+        self.current_page = 0
+        self.per_page = 5
+        self.total_pages = math.ceil(len(hunters) / self.per_page)
+
+    def create_embed(self):
+        embed = discord.Embed(
+            title="⚔️ RANKING: TOP HUNTERS",
+            description="",
+            color=0x4b8bf5
+        )
+        
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_hunters = self.hunters[start:end]
+        
+        entries = []
+        for i, hunter in enumerate(page_hunters, start + 1):
+            rank = i
+            user_id = hunter['user_id']
+            lvl = hunter['level']
+            hours = float(hunter['total_study_hours'])
+            
+            # 🏆 Rank Tier Ritual
+            if rank == 1:
+                tier = "🏆 #1 — S-RANK HUNTER"
+            elif rank == 2:
+                tier = "🥈 #2 — A-RANK HUNTER"
+            elif rank == 3:
+                tier = "🥉 #3 — B-RANK HUNTER"
+            else:
+                tier = f"#{rank} — C-RANK HUNTER"
+            
+            entry = f"**{tier}**\n<@{user_id}>\n`Lvl {lvl} • {hours:.1f}h`"
+            entries.append(entry)
+
+        embed.description = "\n\n".join(entries)
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Total Hunters: {len(self.hunters)}")
+        
+        # UI Control Ritual
+        self.update_buttons()
+        return embed
+
+    def update_buttons(self):
+        self.prev_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.invoker.id:
+            await interaction.response.send_message("❌ This ritual can only be controlled by the invoker.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page -= 1
+        await interaction.response.edit_message(embed=self.create_embed(), view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.secondary)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page += 1
+        await interaction.response.edit_message(embed=self.create_embed(), view=self)
 
     async def show_profile(self, source):
         if not await self._check_channel_restrictions(source):
