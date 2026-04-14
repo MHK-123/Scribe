@@ -10,6 +10,8 @@ if (config.REDIS_URL) {
   console.warn('⚠️ [Redis]: REDIS_URL absent. Falling back to local in-memory storage (Inefficient for scale).');
 }
 
+export { redis };
+
 /**
  * ─── Shared Bot Guild Cache ───────────────────────────────────────────────
  * Centralised vision store for the bot's known guild presence.

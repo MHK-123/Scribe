@@ -23,6 +23,7 @@ from bot.utils.logger import bot_logger
 from bot.utils.embeds import create_error_embed
 from bot.core.database import init_db
 from bot.core.socket_client import connect_socketIO
+from bot.core.redis import redis_client
 
 
 
@@ -40,6 +41,9 @@ class ScribeBot(commands.Bot):
     async def setup_hook(self):
         bot_logger.info("📡 [PHASE]: Setup Hook Initializing...")
         
+        # 0. Redis Scrying Initialization
+        await redis_client.connect()
+
         # 1. Database Registry
         try:
             pool = await init_db()
@@ -124,8 +128,19 @@ class ScribeBot(commands.Bot):
             bot_logger.info("⚔️ [PHASE]: Realm ownership reconciliation complete.")
             self._is_manifested = True
             bot_logger.info("🛡️ [STABILITY]: Sentinel has reached full manifestation.")
+            
+            # 3. Heartbeat Ritual
+            asyncio.create_task(self.heartbeat_loop())
         except Exception as e:
             bot_logger.error(f"💀 [IGNITION FAULT]: Rituals aborted but Sentinel remains stable: {e}")
+
+    async def heartbeat_loop(self):
+        """Periodic broadcast of vitality to the Redis gateway."""
+        while True:
+            try:
+                await redis_client.set_bot_heartbeat()
+            except: pass
+            await asyncio.sleep(60) # Every minute
 
     async def on_guild_join(self, guild: discord.Guild):
         bot_logger.info(f"🛡️ [PROTOCOL]: Sentinel entering new realm: {guild.name} ({guild.id})")

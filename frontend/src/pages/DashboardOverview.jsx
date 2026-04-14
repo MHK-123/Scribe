@@ -100,9 +100,9 @@ export default function DashboardOverview() {
 
   const cards = [
     { title: 'Active Chambers', value: stats?.activeVoiceChannels ?? 0, icon: "Activity", color: "text-blue-400", glow: 'rgba(59,130,246,0.1)' },
-    { title: 'Hunters Engaged', value: stats?.usersStudying ?? 0, icon: "Users", color: "text-purple-400", glow: 'rgba(168,85,247,0.1)' },
-    { title: 'Mana Harvested', value: `${Number(stats?.totalHoursToday || 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
-    { title: 'System Pulse', value: '24ms', icon: "Zap", color: "text-yellow-400", glow: 'rgba(234,179,8,0.1)' }
+    { title: 'Top Hunter Today', value: stats?.topHunterToday ?? "N/A", icon: "Trophy", color: "text-yellow-400", glow: 'rgba(250,204,21,0.1)' },
+    { title: 'Activity Level', value: stats?.activityLevel ?? "Low", icon: "Zap", color: "text-purple-400", glow: 'rgba(168,85,247,0.1)' },
+    { title: 'Mana Harvested', value: `${Number(stats?.totalHoursToday ?? 0).toFixed(1)}h`, icon: "Flame", color: "text-orange-400", glow: 'rgba(249,115,22,0.1)' },
   ];
 
   return (
@@ -123,67 +123,40 @@ export default function DashboardOverview() {
         )}
       </AnimatePresence>
 
-      {/* Hero Progress Section */}
-      <MagicPanel className="p-8 border-blue-500/10" glowColor="rgba(59,130,246,0.1)">
-         <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-8">
-                <div className="relative flex items-center justify-center p-1 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-full shadow-[0_0_25px_rgba(59,130,246,0.3)]">
-                   <div className="bg-[#0a0a0f] rounded-full p-1">
-                      <svg className="w-24 h-24 transform -rotate-90">
-                         <circle cx="48" cy="48" r="44" stroke="rgba(255,255,255,0.05)" strokeWidth="6" fill="transparent" />
-                         <motion.circle cx="48" cy="48" r="44" stroke="currentColor" strokeWidth="6" fill="transparent" 
-                            strokeDasharray="276" initial={{ strokeDashoffset: 276 }} animate={{ strokeDashoffset: 276 - (276 * xpProgressPercent) / 100 }}
-                            transition={{ duration: 1.5, ease: "easeOut" }}
-                            className="text-blue-500" strokeLinecap="round" />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                         <span className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em] -mb-1">Rank</span>
-                         <span className="text-3xl font-black">{level}</span>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="flex-1 space-y-4">
+      {/* Core Insights Header */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <MagicPanel className="lg:col-span-2 p-6 border-blue-500/10" glowColor="rgba(59,130,246,0.05)">
+              <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                     <div className="flex items-center gap-2">
-                        <span 
-                           className="text-[10px] font-black uppercase tracking-[0.3em] italic"
-                           style={{ color: getHunterRank(level).color, textShadow: `0 0 10px ${getHunterRank(level).shadow}` }}
-                        >
-                           {getHunterRank(level).label}
-                        </span>
-                     </div>
-                     <h3 className="text-2xl font-black text-white tracking-tighter uppercase italic flex items-center gap-2">
-                        {user?.username}
-                     </h3>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">System Identity</p>
+                      <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Sanctum Sentinel Core <span className="text-blue-500">v3.0</span></h2>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
-                     <span className="flex items-center gap-1.5"><Icon name="Sword" size={12} className="text-slate-400"/> {currentXp} / {nextLvlXp} Essence</span>
-                     <span className="flex items-center gap-1.5"><Icon name="Clock" size={12} className="text-slate-400"/> {Number(progress?.total_study_hours || 0).toFixed(1)} Harvested Hours</span>
+                  <div className="flex items-center gap-4">
+                      {['Bot', 'DB', 'Sync'].map(sys => (
+                          <div key={sys} className="flex flex-col items-center">
+                              <span className="text-[8px] font-bold text-slate-600 uppercase mb-1">{sys}</span>
+                              <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
+                                  <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
+                                  <span className="text-[9px] font-black text-green-400 uppercase">Active</span>
+                              </div>
+                          </div>
+                      ))}
                   </div>
-                  <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden border border-white/5">
-                     <motion.div initial={{ width: 0 }} animate={{ width: `${xpProgressPercent}%` }} transition={{ duration: 1 }} className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
+              </div>
+          </MagicPanel>
+          
+          <MagicPanel className="p-6 border-yellow-500/10" glowColor="rgba(250,204,21,0.05)">
+              <div className="flex items-center gap-4">
+                  <div className="p-3 bg-yellow-400/10 rounded-xl border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.1)]">
+                      <Lucide.ShieldCheck className="text-yellow-400" size={24} />
                   </div>
-                </div>
-            </div>
-
-            <AnimatePresence>
-               {nextReward && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full lg:w-auto bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-4 relative group hover:border-orange-500/30 transition-all">
-                     <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all">
-                        <Icon name="Target" className="text-orange-400" size={24} />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Upcoming Relic</p>
-                        <p className="font-bold text-white text-sm">
-                           Unlock at <span className="text-orange-400">{parseFloat(nextReward?.required_hours || 0)} hrs</span>
-                        </p>
-                     </div>
-                  </motion.div>
-               )}
-            </AnimatePresence>
-         </div>
-      </MagicPanel>
+                  <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Sanctuary Status</p>
+                      <p className="font-black text-white text-sm uppercase italic">Fully Protected</p>
+                  </div>
+              </div>
+          </MagicPanel>
+      </div>
       
       {/* Metric Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -216,45 +189,40 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Activity Chart */}
-         <MagicPanel className="lg:col-span-2 p-6 h-[320px] flex flex-col border-white/5" glowColor="rgba(59,130,246,0.03)">
-            <div className="flex justify-between items-center mb-4">
-               <h3 className="text-sm font-bold flex items-center gap-3 text-white">
-                  <Icon name="Activity" className="text-blue-500" size={16} />
-                  Mana Flux Pattern
-               </h3>
-               <div className="flex gap-2">
-                  <span className="text-[9px] font-bold px-2 py-0.5 bg-white/5 rounded-full border border-white/10 text-slate-500 uppercase tracking-tighter">Lunar Cycle</span>
+         {/* Activity Chart - Conditional Rendering for Safety */}
+         {chartData.some(d => (d?.hours ?? 0) > 0) ? (
+            <MagicPanel className="lg:col-span-2 p-6 h-[320px] flex flex-col border-white/5" glowColor="rgba(59,130,246,0.03)">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-bold flex items-center gap-3 text-white">
+                     <Icon name="Activity" className="text-blue-500" size={16} />
+                     Mana Flux Pattern
+                  </h3>
+                  <div className="flex gap-2">
+                     <span className="text-[9px] font-bold px-2 py-0.5 bg-white/5 rounded-full border border-white/10 text-slate-500 uppercase tracking-tighter">Lunar Cycle</span>
+                  </div>
                </div>
-            </div>
-            
-            <div className="flex-1 w-full h-full min-h-0">
-               <ResponsiveContainer width="100%" height="100%">
-                 {chartData.length > 0 ? (
-                    <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
-                      <YAxis stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0a0a0f', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', color: '#fff' }} />
-                      <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
-                    </AreaChart>
-                 ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 space-y-2">
-                       <Icon name="BarChart3" size={32} />
-                       <span className="text-[10px] font-bold uppercase tracking-widest">Awaiting Mana Streams...</span>
-                    </div>
-                 )}
-               </ResponsiveContainer>
-            </div>
-         </MagicPanel>
+               
+               <div className="flex-1 w-full h-full min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <defs>
+                           <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                           <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                           </linearGradient>
+                        </defs>
+                        <XAxis dataKey="name" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} tick={{ dy: 10 }} />
+                        <YAxis stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ backgroundColor: '#0a0a0f', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', color: '#fff' }} />
+                        <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                        </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </MagicPanel>
+         ) : null}
 
          {/* Oracle Panel */}
-         <MagicPanel className="p-6 border-blue-500/10 flex flex-col justify-between" glowColor="rgba(59,130,246,0.08)">
+         <MagicPanel className={`${!chartData.some(d => (d?.hours ?? 0) > 0) ? 'lg:col-span-3' : ''} p-6 border-blue-500/10 flex flex-col justify-between`} glowColor="rgba(59,130,246,0.08)">
             <div className="relative">
                <div className="flex items-center gap-3 mb-6">
                   <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-[0_0_15_rgb(59,130,246,0.1)]">
@@ -267,7 +235,11 @@ export default function DashboardOverview() {
                   <div className="bg-black/40 border border-white/5 p-4 rounded-xl shadow-inner relative overflow-hidden group">
                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
                      <p className="text-white leading-relaxed text-sm font-medium pl-2 italic">
-                        Harvest peaks during <span className="text-blue-400 font-bold underline">Lunar Noon</span>. Fellow hunters harvested <span className="text-blue-400 font-bold">20% more essence</span> this cycle. Summons result in optimized mana gain!
+                        {stats?.totalHoursToday > 0 ? (
+                           <>Harvest peaks during <span className="text-blue-400 font-bold underline">Lunar Noon</span>. Fellow hunters harvested <span className="text-blue-400 font-bold">20% more essence</span> this cycle. Summons result in optimized mana gain!</>
+                        ) : (
+                           <>The realm is currently in **Stasis**. No mana flux detected. Assemble your party and enter the chambers to begin the harvest ritual.</>
+                        )}
                      </p>
                   </div>
                </div>

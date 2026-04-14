@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { authorizeGuild } from '../middleware/guildAuth.js';
 import { query } from '../db.js';
-import { botCache } from '../utils/botCache.js';
+import { botCache, redis } from '../utils/botCache.js';
 import { discordService } from '../services/discordService.js';
 
 const router = express.Router();
@@ -190,19 +190,42 @@ router.get('/:id/user-progress', async (req, res) => {
 router.get('/:id/stats', async (req, res) => {
   const { id } = req.params;
   try {
-    const [channelsRes, hoursRes] = await Promise.all([
-      query('SELECT COUNT(*) AS count FROM temp_voice_channels WHERE guild_id = $1', [id]),
+    const [channelsRes, hoursRes, topHunterRes, heartbeat] = await Promise.all([
+      redis ? redis.get(`bot:active_vcs:${id}`) : Promise.resolve(0),
       query(
         `SELECT COALESCE(SUM(duration), 0) AS total
          FROM study_sessions
          WHERE guild_id = $1 AND DATE(join_time) = CURRENT_DATE`,
         [id]
       ),
+      query(
+        `SELECT u.username, s.user_id, SUM(s.duration) as total 
+         FROM study_sessions s
+         JOIN users u ON s.user_id = u.user_id
+         WHERE s.guild_id = $1 AND DATE(s.join_time) = CURRENT_DATE 
+         GROUP BY s.user_id, u.username
+         ORDER BY total DESC LIMIT 1`,
+        [id]
+      ),
+      redis ? redis.get('bot:heartbeat') : Promise.resolve(null)
     ]);
+
+    const totalHours = parseFloat((parseInt(hoursRes.rows[0].total) / 3600).toFixed(2));
+    let activityLevel = "Low";
+    if (totalHours > 5) activityLevel = "High";
+    else if (totalHours > 1) activityLevel = "Medium";
+
     res.json({
-      activeVoiceChannels: parseInt(channelsRes.rows[0].count),
-      totalHoursToday:     (parseInt(hoursRes.rows[0].total) / 3600).toFixed(2),
-      usersStudying:       0, // requires real-time bot data via socket
+      activeVoiceChannels: parseInt(channelsRes || 0),
+      totalHoursToday:     totalHours,
+      usersStudying:       0, // Placeholder for socket-based real-time 
+      topHunterToday:      topHunterRes.rows[0]?.username || "No activity yet",
+      activityLevel:       activityLevel,
+      systemHealth: {
+        bot: !!heartbeat ? "Healthy" : "Offline",
+        database: "Healthy",
+        sync: "Active"
+      }
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch stats' });
@@ -299,29 +322,45 @@ router.get('/:id/leaderboard', async (req, res) => {
     } else {
       // Default: all-time (Ancient Records) - MATCH DISCORD BOT SOURCE
       const result = await query(
-        `SELECT user_id, total_study_hours as total_hours, level
-         FROM user_levels WHERE guild_id = $1
-         ORDER BY total_study_hours DESC LIMIT 5`,
+        `SELECT ul.user_id, ul.total_study_hours as total_hours, ul.level, u.username, u.avatar_url
+         FROM user_levels ul
+         LEFT JOIN users u ON ul.user_id = u.user_id
+         WHERE ul.guild_id = $1
+         ORDER BY ul.total_study_hours DESC LIMIT 20`,
         [id]
       );
       rows = result.rows.map((row, i) => ({
         user_id:     row.user_id,
         total_hours: parseFloat(row.total_hours).toFixed(1),
         level:       row.level,
+        username:    row.username,
+        avatar_url:  row.avatar_url,
         rank:        i + 1,
       }));
     }
 
-    const userIds = rows.map(r => r.user_id);
-    const metadata = await getLeaderboardMetadata(id, userIds);
+    // Ensure metadata for time-filtered types (monthly/last_month)
+    if (type === 'monthly' || type === 'last_month') {
+      const userIds = rows.map(r => r.user_id);
+      const metadata = await getLeaderboardMetadata(id, userIds);
+      
+      // Also get their levels
+      const levelsRes = await query(
+        'SELECT user_id, level FROM user_levels WHERE guild_id = $1 AND user_id = ANY($2)',
+        [id, userIds]
+      );
+      const levelMap = {};
+      levelsRes.rows.forEach(l => levelMap[l.user_id] = l.level);
 
-    const merged = rows.map(r => ({
-      ...r,
-      username:   metadata[r.user_id]?.username || `Hunter ${r.user_id.slice(-4)}`,
-      avatar_url: metadata[r.user_id]?.avatar_url || null
-    }));
+      rows = rows.map(r => ({
+        ...r,
+        username:   metadata[r.user_id]?.username || `Hunter ${r.user_id.slice(-4)}`,
+        avatar_url: metadata[r.user_id]?.avatar_url || null,
+        level:      levelMap[r.user_id] || 0
+      }));
+    }
 
-    res.json(merged);
+    res.json(rows);
   } catch (err) {
     console.error('Leaderboard Fetch Error:', err);
     res.status(500).json({ error: 'Failed to fetch leaderboard' });

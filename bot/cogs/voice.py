@@ -8,6 +8,7 @@ from bot.core.database import get_pool
 from bot.core.socket_client import safe_emit
 from bot.utils.embeds import create_dungeon_embed, create_error_embed
 from bot.utils.logger import bot_logger
+from bot.core.redis import redis_client
 
 class VoiceSetup(commands.Cog):
     def __init__(self, bot):
@@ -297,6 +298,14 @@ class VoiceSetup(commands.Cog):
             if xp_gained > 0:
                 await self._process_xp(conn, member, guild_id, xp_gained, hours_gained, config)
 
+    async def _sync_active_vcs(self, guild: discord.Guild):
+        """Analyze all realm chambers and sync the count of occupied nodes to Redis."""
+        try:
+            active_count = len([c for c in guild.voice_channels if len(c.members) > 0])
+            await redis_client.set_active_vcs(str(guild.id), active_count)
+        except Exception as e:
+            bot_logger.error(f"🛡️ [SAFETY]: Failed to sync active chambers for realm {guild.id}: {e}")
+
     # ─── Event Handlers ───
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -390,6 +399,9 @@ class VoiceSetup(commands.Cog):
                                 ''',
                                 str(hunter.id), guild_id, str(after.channel.id), datetime.now(timezone.utc)
                             )
+                
+                # 3. Synchronize Realm Vitals to Redis
+                await self._sync_active_vcs(member.guild)
         except Exception as e:
             bot_logger.error(f"🛡️ [SAFETY BASELINE]: Voice event anomaly suppressed: {e}")
 

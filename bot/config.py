@@ -8,6 +8,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 TOKEN = os.getenv("TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_URL = os.getenv("API_URL")   # Standardised from VITE_API_URL
+REDIS_URL = os.getenv("REDIS_URL")
 
 # ─── THEMES ───
 class Theme:
