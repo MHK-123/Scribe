@@ -227,13 +227,14 @@ def main_entry():
     signal.signal(signal.SIGINT, handle_exit)
 
     # 2. Execution (Single Pass Logic)
-    # The Root main.py handles the retry loop and health check.
     try:
+        import traceback
         bot_logger.info("🌐 [IGNITION]: Synchronizing with Discord Gateway...")
         bot.run(TOKEN, log_handler=None)
     except Exception as e:
-        bot_logger.error(f"💀 [IGNITION]: Sentinel Fatal Flatline: {e}")
-        raise # Let Root main.py handle the crash/retry
+        error_trace = traceback.format_exc()
+        bot_logger.error(f"💀 [IGNITION]: Sentinel Fatal Flatline: {e}\n{error_trace}")
+        raise 
 
     bot_logger.info("👋 [IGNITION]: Scribe process extinguished.")
 
