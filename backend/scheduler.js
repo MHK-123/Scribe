@@ -56,6 +56,7 @@ export const initScheduler = () => {
             }
             
             // 3. Guild-Specific Reset: Zero out stats for this guild only
+            await query('DELETE FROM study_sessions WHERE guild_id = $1', [guildId]);
             await query(
               'UPDATE user_levels SET total_xp = 0, level = 0, total_study_hours = 0, last_updated = CURRENT_TIMESTAMP WHERE guild_id = $1',
               [guildId]

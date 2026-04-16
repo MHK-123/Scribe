@@ -226,6 +226,7 @@ router.post('/guilds/:id/users/:userId/reset', async (req, res) => {
     rewardsRes.rows.forEach(r => roleIds.push(r.role_id));
 
     // 2. DB Wipe for single user
+    await query('DELETE FROM study_sessions WHERE guild_id = $1 AND user_id = $2', [id, userId]);
     await query('DELETE FROM monthly_leaderboards WHERE guild_id = $1 AND user_id = $2', [id, userId]);
     await query('UPDATE user_levels SET total_xp = 0, level = 0, total_study_hours = 0 WHERE guild_id = $1 AND user_id = $2', [id, userId]);
 

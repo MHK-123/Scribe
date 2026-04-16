@@ -22,7 +22,8 @@ from bot.config import TOKEN, Settings
 from bot.utils.logger import bot_logger
 from bot.utils.embeds import create_error_embed
 from bot.core.database import init_db
-from bot.core.socket_client import connect_socketIO
+from bot.core.socket_client import connect_socketIO, sio
+from bot.core.socket_handlers import register_socket_events
 from bot.core.redis import redis_client
 
 
@@ -59,6 +60,7 @@ class ScribeBot(commands.Bot):
         bot_logger.info("⚔️ [PHASE]: Pomodoro services initialized (Awaiting Readiness).")
 
         # 3. SocketIO Gateway (Non-blocking resilience)
+        register_socket_events(self, sio)
         asyncio.create_task(self.ignite_socketIO())
 
         # 4. Command Tree Sync (Manual Only Ritual)
