@@ -221,7 +221,8 @@ class VoiceSetup(commands.Cog):
             await interaction.response.send_message(f"❌ Encountered an anomaly while creating the portal: `{e}`", ephemeral=True)
 
     # ─── XP Processing ───
-    async def _process_xp(self, conn, member: discord.Member, guild_id: str, xp_gained: int, hours_gained: float, config):
+    async def _update_member_stats(self, conn, member: discord.Member, guild_id: str, xp_gained: int, hours_gained: float, config: dict = None):
+        """Universal ritual to bestow XP and persistent time upon a hunter."""
         row = await conn.fetchrow(
             '''
             INSERT INTO user_levels (user_id, guild_id, total_xp, total_study_hours)
@@ -252,6 +253,7 @@ class VoiceSetup(commands.Cog):
                 'xp': total_xp,
             })
 
+        # Check for role rewards only if we have a valid manifest
         rewards = await conn.fetch(
             '''
             SELECT required_hours, role_id FROM study_role_rewards
@@ -272,17 +274,18 @@ class VoiceSetup(commands.Cog):
                         'roleId': str(role.id),
                         'hours': float(reward['required_hours']),
                     })
-                    if config and config['announcement_channel_id']:
+                    # Only announce if config is manifested
+                    if config and config.get('announcement_channel_id'):
                         channel = member.guild.get_channel(int(config['announcement_channel_id']))
                         if channel:
                             await channel.send(
                                 f'⚔️ **System Notification** | {member.mention}, you have reached '
                                 f'`{float(reward["required_hours"])}h` and earned the **{role.name}** rank!'
                             )
-                except discord.HTTPException as e:
-                    bot_logger.error(f'Failed to assign role reward {role.name}: {e}')
+                except Exception as e:
+                    bot_logger.error(f'🛡️ [SAFETY]: Failed to assign role reward {role.name}: {e}')
 
-    async def _terminate_session(self, conn, member: discord.Member, guild_id: str, channel_id: int, config):
+    async def _terminate_session(self, conn, member: discord.Member, guild_id: str, channel_id: int, config: dict = None):
         """Internal ritual to finalize a focus session and bestow XP."""
         leave_time = datetime.now(timezone.utc)
         session = await conn.fetchrow(
@@ -294,18 +297,23 @@ class VoiceSetup(commands.Cog):
         )
 
         if session:
-            duration    = int((leave_time - session['join_time']).total_seconds())
-            minutes     = duration // 60
-            xp_gained   = minutes * 10
+            duration     = int((leave_time - session['join_time']).total_seconds())
+            if duration <= 0: return
+
+            # Calculate XP (10 per minute) and Time
+            minutes      = duration / 60.0
+            xp_gained    = int(minutes * 10)
             hours_gained = duration / 3600.0
+
+            bot_logger.info(f"🛡️ [XP-MANIFEST]: Member {member.name} stayed {duration}s. Bestowing {xp_gained} XP and {hours_gained:.4f}h.")
 
             await conn.execute(
                 'UPDATE study_sessions SET leave_time = $1, duration = $2 WHERE id = $3',
                 leave_time, duration, session['id']
             )
 
-            if xp_gained > 0:
-                await self._process_xp(conn, member, guild_id, xp_gained, hours_gained, config)
+            # Always update stats even if XP is 0 (ensure time is recorded)
+            await self._update_member_stats(conn, member, guild_id, xp_gained, hours_gained, config)
 
     async def _sync_active_vcs(self, guild: discord.Guild):
         """Analyze all realm chambers and sync the count of occupied nodes to Redis."""
@@ -340,9 +348,9 @@ class VoiceSetup(commands.Cog):
                     bot_logger.error(f"🛡️ [BRIDGE-FAULT]: Pomodoro hook failed: {e}")
 
             async with pool.acquire() as conn:
+                # Resolve Config for optional rituals (like announcements)
                 config = await conn.fetchrow('SELECT * FROM guild_configs WHERE guild_id = $1', guild_id)
-                if not config:
-                    return
+                config = dict(config) if config else {}
 
                 # ── Join-to-Create ──
                 join_channel = config['join_to_create_channel']
