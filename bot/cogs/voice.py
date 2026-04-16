@@ -374,16 +374,9 @@ class VoiceSetup(commands.Cog):
 
                 # ── Session Management (XP & Residency) ──
                 
-                # 1. Departure Ritual (Leave / Solo Stop)
                 if before.channel and (not after.channel or before.channel.id != after.channel.id):
-                    # Close session for the person leaving
+                    # 1. Departure Ritual (Leave / solo disconnect)
                     await self._terminate_session(conn, member, guild_id, before.channel.id, config)
-
-                    # anti-abuse: If only one person left, close their session too
-                    remaining_hunters = [m for m in before.channel.members if not m.bot]
-                    if len(remaining_hunters) == 1:
-                        solo_hunter = remaining_hunters[0]
-                        await self._terminate_session(conn, solo_hunter, guild_id, before.channel.id, config)
 
                     # Auto Delete (Legacy Temp VC Logic)
                     if config['auto_delete_empty'] and len(before.channel.members) == 0:
@@ -397,19 +390,15 @@ class VoiceSetup(commands.Cog):
 
                 # 2. Arrival Ritual (Join / Group Start)
                 if after.channel and (not before.channel or before.channel.id != after.channel.id):
-                    active_hunters = [m for m in after.channel.members if not m.bot]
-                    
-                    # XP triggers if there is a party (2+ hunters)
-                    if len(active_hunters) >= 2:
-                        for hunter in active_hunters:
-                            await conn.execute(
-                                '''
-                                INSERT INTO study_sessions (user_id, guild_id, channel_id, join_time) 
-                                VALUES ($1, $2, $3, $4)
-                                ON CONFLICT (user_id, guild_id, channel_id) WHERE leave_time IS NULL DO NOTHING
-                                ''',
-                                str(hunter.id), guild_id, str(after.channel.id), datetime.now(timezone.utc)
-                            )
+                    # 2. Arrival Ritual (Join / individual start)
+                    await conn.execute(
+                        '''
+                        INSERT INTO study_sessions (user_id, guild_id, channel_id, join_time) 
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (user_id, guild_id, channel_id) WHERE leave_time IS NULL DO NOTHING
+                        ''',
+                        str(member.id), guild_id, str(after.channel.id), datetime.now(timezone.utc)
+                    )
                 
                 # 3. Synchronize Realm Vitals to Redis
                 await self._sync_active_vcs(member.guild)
