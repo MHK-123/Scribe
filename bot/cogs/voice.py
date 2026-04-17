@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timezone
 import math
+import asyncio
 
 from bot.core.database import get_pool
 from bot.core.socket_client import safe_emit
