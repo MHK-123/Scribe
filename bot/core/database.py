@@ -133,7 +133,19 @@ async def reconcile_schema(pool):
             );
         ''')
 
-        # 3. Apply Partial Unique Index for Session Safety
+        # 3. Purge Ghost Sessions to allow Unique Index Creation
+        await conn.execute('''
+            UPDATE study_sessions 
+            SET leave_time = CURRENT_TIMESTAMP, duration = 0 
+            WHERE leave_time IS NULL 
+              AND id NOT IN (
+                  SELECT MAX(id) FROM study_sessions 
+                  WHERE leave_time IS NULL 
+                  GROUP BY user_id, guild_id, channel_id
+              );
+        ''')
+
+        # 4. Apply Partial Unique Index for Session Safety
         await conn.execute('''
             CREATE UNIQUE INDEX IF NOT EXISTS idx_active_study_session 
             ON study_sessions (user_id, guild_id, channel_id) 
