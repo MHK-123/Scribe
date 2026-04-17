@@ -21,7 +21,7 @@ from discord.ext import commands
 from bot.config import TOKEN, Settings
 from bot.utils.logger import bot_logger
 from bot.utils.embeds import create_error_embed
-from bot.core.database import init_db
+from bot.core.database import init_db, reconcile_schema
 from bot.core.socket_client import connect_socketIO, sio
 from bot.core.socket_handlers import register_socket_events
 from bot.core.redis import redis_client
@@ -49,7 +49,8 @@ class ScribeBot(commands.Bot):
         try:
             pool = await init_db()
             self.pool = pool
-            bot_logger.info("🗄️ [PHASE]: Database tether established.")
+            await reconcile_schema(pool)
+            bot_logger.info("🗄️ [PHASE]: Database tether established & Reconciled.")
         except Exception as e:
             bot_logger.critical(f"❌ [CRITICAL]: Database manifest failed: {e}")
             raise

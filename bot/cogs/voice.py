@@ -13,6 +13,39 @@ from bot.core.redis import redis_client
 class VoiceSetup(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.backfill_lock = asyncio.Lock()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Reconciliation Ritual: Ensure all currently active hunters are Manifested in the DB."""
+        await self.bot.wait_until_ready()
+        async with self.backfill_lock:
+            bot_logger.info("📡 [RECONCILE]: Scanning voice portals for active hunters...")
+            pool = get_pool()
+            if not pool: return
+
+            count = 0
+            async with pool.acquire() as conn:
+                for guild in self.bot.guilds:
+                    for channel in guild.voice_channels:
+                        for member in channel.members:
+                            if member.bot: continue
+                            
+                            # Arrival Ritual (Soft Ignite)
+                            try:
+                                await conn.execute(
+                                    '''
+                                    INSERT INTO study_sessions (user_id, guild_id, channel_id, join_time) 
+                                    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+                                    ON CONFLICT (user_id, guild_id, channel_id) WHERE leave_time IS NULL DO NOTHING
+                                    ''',
+                                    str(member.id), str(guild.id), str(channel.id)
+                                )
+                                count += 1
+                            except Exception as e:
+                                bot_logger.error(f"⚠️ [BACKFILL FAULT]: Failed to ignite hunter {member.name}: {e}")
+            
+            bot_logger.info(f"✅ [RECONCILE]: Backfill complete. {count} active hunters synchronized.")
 
     async def get_owner(self, channel_id: int):
         pool = get_pool()
@@ -314,6 +347,8 @@ class VoiceSetup(commands.Cog):
 
             # Always update stats even if XP is 0 (ensure time is recorded)
             await self._update_member_stats(conn, member, guild_id, xp_gained, hours_gained, config)
+        else:
+            bot_logger.warning(f"⚠️ [XP-EMPTY]: No active session found for {member.name} in {channel_id} during departure.")
 
     async def _sync_active_vcs(self, guild: discord.Guild):
         """Analyze all realm chambers and sync the count of occupied nodes to Redis."""
@@ -411,7 +446,7 @@ class VoiceSetup(commands.Cog):
                 # 3. Synchronize Realm Vitals to Redis
                 await self._sync_active_vcs(member.guild)
         except Exception as e:
-            bot_logger.error(f"🛡️ [SAFETY BASELINE]: Voice event anomaly suppressed: {e}")
+            bot_logger.critical(f"💀 [XP-FATAL]: Voice event anomaly in {member.name}'s state transition: {e}")
 
 async def setup(bot):
     await bot.add_cog(VoiceSetup(bot))
